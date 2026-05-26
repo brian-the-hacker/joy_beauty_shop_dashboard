@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Charles Beauty — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Montserrat', sans-serif; background: #0f2447; color: #fff; min-height: 100vh; }
+
+  .dashboard { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px; min-width: 220px; background: rgba(10,25,55,0.98);
+    border-right: 1px solid rgba(255,215,0,0.12); padding: 24px 0;
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  }
+  .sidebar-logo { padding: 0 20px 24px; border-bottom: 1px solid rgba(255,215,0,0.1); }
+  .sidebar-logo h1 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 400; color: #FFD700; }
+  .sidebar-logo p { font-size: 9px; letter-spacing: .25em; color: rgba(255,215,0,0.5); text-transform: uppercase; margin-top: 2px; }
+
+  .sidebar-nav { padding: 16px 0; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 11px; letter-spacing: .1em; color: rgba(255,255,255,0.5); cursor: pointer; transition: all .2s; text-transform: uppercase; }
+  .nav-item.active, .nav-item:hover { color: #FFD700; background: rgba(255,215,0,0.07); }
+  .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: #FFD700; display: none; }
+  .nav-item.active .dot { display: block; }
+
+  .main { flex: 1; overflow-y: auto; }
+  .topbar { background: rgba(10,25,55,0.9); border-bottom: 1px solid rgba(255,215,0,0.1); padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px); }
+  .topbar-title { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+  .add-btn { padding: 8px 18px; background: linear-gradient(135deg, #FFD700, #FFE34D); color: #1B3A6B; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; font-weight: 600; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; transition: transform .2s; }
+  .add-btn:hover { transform: translateY(-1px); }
+
+  .content { padding: 24px 28px; }
+
+  .api-url-bar { background: rgba(10,25,55,0.6); border: 1px solid rgba(255,215,0,0.15); padding: 10px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .api-url-bar label { font-size: 9px; letter-spacing: .2em; color: rgba(255,215,0,0.5); text-transform: uppercase; white-space: nowrap; }
+  .api-url-bar input { flex: 1; background: transparent; border: none; outline: none; color: rgba(255,255,255,0.7); font-size: 11px; font-family: 'Montserrat', sans-serif; }
+  .api-url-bar button { background: rgba(255,215,0,0.15); border: 1px solid rgba(255,215,0,0.3); color: #FFD700; font-size: 9px; letter-spacing: .15em; padding: 5px 12px; cursor: pointer; font-family: 'Montserrat', sans-serif; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: rgba(27,58,107,0.6); border: 1px solid rgba(255,215,0,0.12); padding: 16px 18px; }
+  .stat-label { font-size: 9px; letter-spacing: .25em; text-transform: uppercase; color: rgba(255,215,0,0.6); margin-bottom: 8px; }
+  .stat-value { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 300; color: #fff; }
+
+  .table-wrap { background: rgba(27,58,107,0.4); border: 1px solid rgba(255,215,0,0.12); }
+  .table-header { padding: 14px 20px; border-bottom: 1px solid rgba(255,215,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+  .table-header h2 { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 300; color: #fff; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: rgba(10,25,55,0.6); border: 1px solid rgba(255,215,0,0.2); padding: 7px 12px; }
+  .search-box input { background: transparent; border: none; outline: none; color: #fff; font-size: 11px; font-family: 'Montserrat', sans-serif; width: 160px; }
+  .search-box input::placeholder { color: rgba(255,255,255,0.3); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 10px 14px; text-align: left; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,215,0,0.5); border-bottom: 1px solid rgba(255,215,0,0.08); font-weight: 500; }
+  tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background .2s; }
+  tbody tr:hover { background: rgba(255,215,0,0.04); }
+  tbody td { padding: 12px 14px; font-size: 12px; color: rgba(255,255,255,0.8); vertical-align: middle; }
+
+  .prod-img { width: 40px; height: 40px; object-fit: cover; border-radius: 2px; background: rgba(255,215,0,0.08); }
+  .prod-name { font-size: 12px; color: #fff; font-weight: 500; }
+  .prod-cat { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+  .tag-badge { display: inline-block; padding: 3px 8px; font-size: 9px; letter-spacing: .12em; border: 1px solid rgba(255,215,0,0.4); color: rgba(255,215,0,0.9); text-transform: uppercase; }
+  .price { font-family: 'Cormorant Garamond', serif; font-size: 16px; color: #FFD700; }
+
+  .toggle-btn { width: 38px; height: 20px; border-radius: 10px; border: none; cursor: pointer; position: relative; transition: background .25s; }
+  .toggle-btn.on { background: rgba(255,215,0,0.3); border: 1px solid rgba(255,215,0,0.6); }
+  .toggle-btn.off { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+  .toggle-dot { width: 14px; height: 14px; border-radius: 50%; position: absolute; top: 2px; transition: left .25s; }
+  .toggle-btn.on .toggle-dot { left: 20px; background: #FFD700; }
+  .toggle-btn.off .toggle-dot { left: 3px; background: rgba(255,255,255,0.5); }
+
+  .action-btn { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); padding: 5px 10px; font-size: 10px; cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; margin-right: 4px; letter-spacing: .08em; }
+  .action-btn:hover { border-color: rgba(255,215,0,0.5); color: #FFD700; }
+  .action-btn.danger:hover { border-color: rgba(220,50,50,0.6); color: #ff6b6b; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(5,15,35,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal { background: #0f2447; border: 1px solid rgba(255,215,0,0.25); width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-head { padding: 20px 24px; border-bottom: 1px solid rgba(255,215,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 300; color: #fff; }
+  .modal-close { background: transparent; border: none; color: rgba(255,255,255,0.4); font-size: 20px; cursor: pointer; }
+  .modal-close:hover { color: #fff; }
+  .modal-body { padding: 24px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,215,0,0.6); margin-bottom: 6px; }
+  .form-input { width: 100%; padding: 9px 12px; background: rgba(10,25,55,0.8); border: 1px solid rgba(255,215,0,0.2); color: #fff; font-size: 12px; font-family: 'Montserrat', sans-serif; outline: none; transition: border .2s; }
+  .form-input:focus { border-color: rgba(255,215,0,0.5); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-textarea { resize: vertical; min-height: 70px; }
+
+  .modal-footer { padding: 16px 24px; border-top: 1px solid rgba(255,215,0,0.1); display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-primary { padding: 10px 22px; background: linear-gradient(135deg,#FFD700,#FFE34D); color: #1B3A6B; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; font-weight: 600; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; }
+  .btn-secondary { padding: 10px 22px; background: transparent; border: 1px solid rgba(255,215,0,0.3); color: rgba(255,215,0,0.7); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; cursor: pointer; font-family: 'Montserrat', sans-serif; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; font-size: 11px; letter-spacing: .1em; z-index: 200; animation: slideIn .3s ease; border-left: 3px solid; }
+  .toast.success { background: rgba(10,60,30,0.95); border-color: #4caf50; color: #90ee90; }
+  .toast.error { background: rgba(60,10,10,0.95); border-color: #f44336; color: #ffaaaa; }
+  @keyframes slideIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .loading { text-align: center; padding: 48px; color: rgba(255,215,0,0.5); font-size: 11px; letter-spacing: .3em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Charles</h1>
+      <p>Admin Dashboard</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active"><span class="dot"></span> Products</div>
+      <div class="nav-item" onclick="showToast('Coming soon', 'success')">Orders</div>
+      <div class="nav-item" onclick="showToast('Coming soon', 'success')">Analytics</div>
+      <div class="nav-item" onclick="showToast('Coming soon', 'success')">Settings</div>
+    </nav>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Product Management</span>
+      <button class="add-btn" onclick="openModal()">+ Add Product</button>
+    </div>
+
+    <div class="content">
+      <div class="api-url-bar">
+        <label>API URL</label>
+        <input type="text" id="apiUrl" value="http://localhost:5000" placeholder="http://localhost:5000" />
+        <button onclick="loadProducts()">Connect</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total Products</div><div class="stat-value" id="s-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="s-active">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Price</div><div class="stat-value" id="s-avg">—</div></div>
+        <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-value" id="s-cats">—</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <h2>All Products</h2>
+          <div class="search-box">
+            <span style="color:rgba(255,215,0,0.5);font-size:14px">⌕</span>
+            <input type="text" id="searchInput" placeholder="Search…" oninput="filterTable()" />
+          </div>
+        </div>
+        <div id="tableContent">
+          <div class="loading">Connecting to Flask API…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Add Product</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId" />
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Product Name</label>
+          <input class="form-input" id="f-name" placeholder="Velvet Noir Serum" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input class="form-input" id="f-cat" placeholder="Serums" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Price ($)</label>
+          <input class="form-input" id="f-price" type="number" placeholder="148" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tag / Badge</label>
+          <input class="form-input" id="f-tag" placeholder="Bestseller" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input form-textarea" id="f-desc" placeholder="Product description…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Image URL</label>
+        <input class="form-input" id="f-img" placeholder="https://images.pexels.com/…" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="f-active">
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let products = [];
+  let filtered = [];
+
+  function apiBase() {
+    return document.getElementById('apiUrl').value.replace(/\/$/, '');
+  }
+
+  async function loadProducts() {
+    document.getElementById('tableContent').innerHTML = '<div class="loading">Fetching from Flask…</div>';
+    try {
+      const res = await fetch(apiBase() + '/api/products');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      products = await res.json();
+      filtered = [...products];
+      updateStats();
+      renderTable();
+      showToast('Connected — ' + products.length + ' products loaded', 'success');
+    } catch (e) {
+      document.getElementById('tableContent').innerHTML =
+        '<div class="loading" style="color:#ff8888">Could not reach Flask API.<br><small style="opacity:.6">' + e.message + '</small></div>';
+      showToast('Connection failed: ' + e.message, 'error');
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = products.length;
+    document.getElementById('s-active').textContent = products.filter(p => p.active).length;
+    const avg = products.length ? Math.round(products.reduce((a, p) => a + p.price, 0) / products.length) : 0;
+    document.getElementById('s-avg').textContent = '$' + avg;
+    document.getElementById('s-cats').textContent = new Set(products.map(p => p.cat)).size;
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    filtered = products.filter(p =>
+      [p.name, p.cat, p.tag, p.desc].some(s => s && s.toLowerCase().includes(q))
+    );
+    renderTable();
+  }
+
+  function renderTable() {
+    if (!filtered.length) {
+      document.getElementById('tableContent').innerHTML = '<div class="loading">No products found.</div>';
+      return;
+    }
+    const rows = filtered.map(p => `
+      <tr>
+        <td><img class="prod-img" src="${p.img || ''}" onerror="this.src=''" /></td>
+        <td>
+          <div class="prod-name">${p.name}</div>
+          <div class="prod-cat">${p.cat}</div>
+        </td>
+        <td><span class="tag-badge">${p.tag || '—'}</span></td>
+        <td><span class="price">$${p.price}</span></td>
+        <td>
+          <button class="toggle-btn ${p.active ? 'on' : 'off'}" onclick="toggleProduct('${p.id}')" title="${p.active ? 'Active — click to deactivate' : 'Inactive — click to activate'}">
+            <div class="toggle-dot"></div>
+          </button>
+        </td>
+        <td>
+          <button class="action-btn" onclick="editProduct('${p.id}')">Edit</button>
+          <button class="action-btn danger" onclick="deleteProduct('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('tableContent').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Image</th><th>Product</th><th>Tag</th><th>Price</th><th>Active</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function openModal() {
+    document.getElementById('editId').value = '';
+    document.getElementById('modalTitle').textContent = 'Add Product';
+    ['name','cat','price','tag','desc','img'].forEach(f => document.getElementById('f-' + f).value = '');
+    document.getElementById('f-active').value = 'true';
+    document.getElementById('modal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+  }
+
+  function editProduct(id) {
+    const p = products.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('editId').value = p.id;
+    document.getElementById('modalTitle').textContent = 'Edit Product';
+    document.getElementById('f-name').value = p.name || '';
+    document.getElementById('f-cat').value = p.cat || '';
+    document.getElementById('f-price').value = p.price || '';
+    document.getElementById('f-tag').value = p.tag || '';
+    document.getElementById('f-desc').value = p.desc || '';
+    document.getElementById('f-img').value = p.img || '';
+    document.getElementById('f-active').value = p.active ? 'true' : 'false';
+    document.getElementById('modal').style.display = 'flex';
+  }
+
+  async function saveProduct() {
+    const id = document.getElementById('editId').value;
+    const data = {
+      name: document.getElementById('f-name').value,
+      cat: document.getElementById('f-cat').value,
+      price: parseFloat(document.getElementById('f-price').value) || 0,
+      tag: document.getElementById('f-tag').value,
+      desc: document.getElementById('f-desc').value,
+      img: document.getElementById('f-img').value,
+      active: document.getElementById('f-active').value === 'true',
+    };
+    try {
+      let res;
+      if (id) {
+        res = await fetch(apiBase() + '/api/products/' + id, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+      } else {
+        res = await fetch(apiBase() + '/api/products', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        });
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      closeModal();
+      showToast(id ? 'Product updated successfully' : 'Product created successfully', 'success');
+      loadProducts();
+    } catch (e) {
+      showToast('Save failed: ' + e.message, 'error');
+    }
+  }
+
+  async function deleteProduct(id, name) {
+    if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+    try {
+      const res = await fetch(apiBase() + '/api/products/' + id, { method: 'DELETE' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      showToast('"' + name + '" deleted', 'success');
+      loadProducts();
+    } catch (e) {
+      showToast('Delete failed: ' + e.message, 'error');
+    }
+  }
+
+  async function toggleProduct(id) {
+    try {
+      const res = await fetch(apiBase() + '/api/products/' + id + '/toggle', { method: 'POST' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const updated = await res.json();
+      showToast(updated.active ? 'Product activated' : 'Product deactivated', 'success');
+      loadProducts();
+    } catch (e) {
+      showToast('Toggle failed: ' + e.message, 'error');
+    }
+  }
+
+  let toastTimer;
+  function showToast(msg, type) {
+    clearTimeout(toastTimer);
+    const existing = document.getElementById('_toast');
+    if (existing) existing.remove();
+    const t = document.createElement('div');
+    t.id = '_toast';
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    toastTimer = setTimeout(() => t.remove(), 3500);
+  }
+
+  loadProducts();
+</script>
+</body>
+</html>
