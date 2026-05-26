@@ -38,5 +38,41 @@
     "desc": "If you have oily or acne-prone skin, using oils may sound like a bad idea. But not all oils are created equal. ",
     "img": "https://i.pinimg.com/1200x/bc/0c/01/bc0c01b93f565c89f24d49f34bc12da6.jpg",
     "active": true
+  },
+  {
+    "id": "0b7f4efe",
+    "name": "Tumeric serum",
+    "cat": "serums",
+    "price": 2000.0,
+    "tag": "luxury",
+    "desc": "",
+    "img": "https://i.pinimg.com/1200x/dc/33/ea/dc33eae287cf2925dbcb843f6c54b856.jpg",
+    "active": true
+  },
+  {
+    "id": "09527d19",
+    "name": "Vaseline",
+    "cat": "Body",
+    "price": 1000.0,
+    "tag": "luxury",
+    "desc": "",
+    "img": "https://i.pinimg.com/1200x/e0/99/cc/e099cc7ce692fd5b7783bd43c8d0087f.jpg",
+    "active": true,
+    "stock": 20,
+    "created_at": "2026-05-26T20:34:52.164199",
+    "updated_at": "2026-05-26T20:34:52.164256"
+  },
+  {
+    "id": "e108c7da",
+    "name": "lipglosse",
+    "cat": "Lip Care",
+    "price": 1000.0,
+    "tag": "luxury",
+    "desc": "",
+    "img": "https://i.pinimg.com/1200x/f6/4f/44/f64f443af93287096e1b7437b8d04c76.jpg",
+    "active": true,
+    "stock": 30,
+    "created_at": "2026-05-26T20:37:56.397668",
+    "updated_at": "2026-05-26T20:37:56.397681"
   }
 ]
