@@ -37,6 +37,9 @@
   .api-url-bar label { font-size: 9px; letter-spacing: .2em; color: rgba(255,215,0,0.5); text-transform: uppercase; white-space: nowrap; }
   .api-url-bar input { flex: 1; min-width: 160px; background: transparent; border: none; outline: none; color: rgba(255,255,255,0.7); font-size: 11px; font-family: 'Montserrat', sans-serif; }
   .api-url-bar button { background: rgba(255,215,0,0.15); border: 1px solid rgba(255,215,0,0.3); color: #FFD700; font-size: 9px; letter-spacing: .15em; padding: 5px 12px; cursor: pointer; font-family: 'Montserrat', sans-serif; white-space: nowrap; }
+  .api-env-badge { font-size: 9px; padding: 3px 8px; border-radius: 2px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; white-space: nowrap; }
+  .api-env-badge.local  { background: rgba(100,180,255,0.15); color: #88ccff; border: 1px solid rgba(100,180,255,0.3); }
+  .api-env-badge.render { background: rgba(100,255,150,0.15); color: #88ffaa; border: 1px solid rgba(100,255,150,0.3); }
   .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); flex-shrink: 0; transition: background .3s; }
   .connection-dot.connected { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
   .connection-dot.error { background: #f44336; }
@@ -49,13 +52,11 @@
   .stat-sub { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 4px; }
   .stat-warn { color: #ffaa44; }
 
-  /* Filters bar */
   .filters-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .filter-select { background: rgba(10,25,55,0.8); border: 1px solid rgba(255,215,0,0.2); color: rgba(255,255,255,0.7); font-size: 10px; padding: 7px 10px; font-family: 'Montserrat', sans-serif; outline: none; cursor: pointer; letter-spacing: .05em; }
   .filter-select:focus { border-color: rgba(255,215,0,0.5); }
   .filter-select option { background: #0f2447; }
 
-  /* Bulk actions */
   .bulk-bar { display: none; align-items: center; gap: 10px; padding: 10px 16px; background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.2); margin-bottom: 14px; font-size: 11px; }
   .bulk-bar.visible { display: flex; }
   .bulk-count { color: #FFD700; font-weight: 600; }
@@ -74,8 +75,6 @@
   table { width: 100%; border-collapse: collapse; }
   thead th { padding: 10px 14px; text-align: left; font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,215,0,0.5); border-bottom: 1px solid rgba(255,215,0,0.08); font-weight: 500; cursor: pointer; user-select: none; white-space: nowrap; }
   thead th:hover { color: rgba(255,215,0,0.9); }
-  thead th .sort-arrow { opacity: 0.3; margin-left: 4px; }
-  thead th.sorted .sort-arrow { opacity: 1; color: #FFD700; }
   tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background .2s; }
   tbody tr:hover { background: rgba(255,215,0,0.04); }
   tbody td { padding: 12px 14px; font-size: 12px; color: rgba(255,255,255,0.8); vertical-align: middle; }
@@ -103,7 +102,6 @@
   .action-btn:hover { border-color: rgba(255,215,0,0.5); color: #FFD700; }
   .action-btn.danger:hover { border-color: rgba(220,50,50,0.6); color: #ff6b6b; }
 
-  /* Pagination */
   .pagination { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid rgba(255,215,0,0.08); justify-content: space-between; flex-wrap: wrap; }
   .pagination-info { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: .05em; }
   .pagination-btns { display: flex; gap: 6px; align-items: center; }
@@ -111,7 +109,6 @@
   .page-btn:hover:not(:disabled) { border-color: rgba(255,215,0,0.5); color: #FFD700; }
   .page-btn.active { border-color: rgba(255,215,0,0.6); color: #FFD700; background: rgba(255,215,0,0.1); }
   .page-btn:disabled { opacity: 0.3; cursor: default; }
-  .page-limit { background: rgba(10,25,55,0.8); border: 1px solid rgba(255,215,0,0.2); color: rgba(255,255,255,0.6); font-size: 10px; padding: 5px 8px; font-family: 'Montserrat', sans-serif; outline: none; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(5,15,35,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .modal { background: #0f2447; border: 1px solid rgba(255,215,0,0.25); width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
@@ -172,38 +169,19 @@
       <div class="api-url-bar">
         <span class="connection-dot" id="connDot"></span>
         <label>API URL</label>
-        <input type="text" id="apiUrl" value="http://localhost:5000" />
+        <input type="text" id="apiUrl" />
+        <span class="api-env-badge" id="envBadge"></span>
         <button onclick="loadAll()">Connect</button>
       </div>
 
       <!-- Stats -->
       <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-label">Total Products</div>
-          <div class="stat-value" id="s-total">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Active</div>
-          <div class="stat-value" id="s-active">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Avg Price</div>
-          <div class="stat-value" id="s-avg">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Categories</div>
-          <div class="stat-value" id="s-cats">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Low Stock</div>
-          <div class="stat-value stat-warn" id="s-low">—</div>
-          <div class="stat-sub">≤ 10 units</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Out of Stock</div>
-          <div class="stat-value stat-warn" id="s-oos">—</div>
-          <div class="stat-sub">0 units</div>
-        </div>
+        <div class="stat-card"><div class="stat-label">Total Products</div><div class="stat-value" id="s-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="s-active">—</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Price</div><div class="stat-value" id="s-avg">—</div></div>
+        <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-value" id="s-cats">—</div></div>
+        <div class="stat-card"><div class="stat-label">Low Stock</div><div class="stat-value stat-warn" id="s-low">—</div><div class="stat-sub">≤ 10 units</div></div>
+        <div class="stat-card"><div class="stat-label">Out of Stock</div><div class="stat-value stat-warn" id="s-oos">—</div><div class="stat-sub">0 units</div></div>
       </div>
 
       <!-- Filters -->
@@ -250,9 +228,7 @@
             <input type="text" id="searchInput" placeholder="Search…" oninput="onSearch()" />
           </div>
         </div>
-        <div id="tableContent">
-          <div class="loading">Connecting to Flask API…</div>
-        </div>
+        <div id="tableContent"><div class="loading">Connecting…</div></div>
         <div class="pagination" id="paginationBar" style="display:none"></div>
       </div>
 
@@ -270,48 +246,19 @@
     <div class="modal-body">
       <input type="hidden" id="editId" />
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Product Name *</label>
-          <input class="form-input" id="f-name" placeholder="Velvet Noir Serum" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Category *</label>
-          <input class="form-input" id="f-cat" placeholder="Serums" list="catList" />
-          <datalist id="catList"></datalist>
-        </div>
+        <div class="form-group"><label class="form-label">Product Name *</label><input class="form-input" id="f-name" placeholder="Velvet Noir Serum" /></div>
+        <div class="form-group"><label class="form-label">Category *</label><input class="form-input" id="f-cat" placeholder="Serums" list="catList" /><datalist id="catList"></datalist></div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Price ($) *</label>
-          <input class="form-input" id="f-price" type="number" min="0" placeholder="148" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Stock (units)</label>
-          <input class="form-input" id="f-stock" type="number" min="0" placeholder="0" />
-        </div>
+        <div class="form-group"><label class="form-label">Price ($) *</label><input class="form-input" id="f-price" type="number" min="0" placeholder="148" /></div>
+        <div class="form-group"><label class="form-label">Stock (units)</label><input class="form-input" id="f-stock" type="number" min="0" placeholder="0" /></div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Tag / Badge</label>
-          <input class="form-input" id="f-tag" placeholder="Bestseller" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-input" id="f-active">
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
-        </div>
+        <div class="form-group"><label class="form-label">Tag / Badge</label><input class="form-input" id="f-tag" placeholder="Bestseller" /></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="f-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea class="form-input form-textarea" id="f-desc" placeholder="Product description…"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Image URL</label>
-        <input class="form-input" id="f-img" placeholder="https://images.pexels.com/…" oninput="previewImg()" />
-        <img id="imgPreview" class="img-preview" />
-      </div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-input form-textarea" id="f-desc" placeholder="Product description…"></textarea></div>
+      <div class="form-group"><label class="form-label">Image URL</label><input class="form-input" id="f-img" placeholder="https://…" oninput="previewImg()" /><img id="imgPreview" class="img-preview" /></div>
       <div class="form-error" id="formError"></div>
     </div>
     <div class="modal-footer">
@@ -322,6 +269,37 @@
 </div>
 
 <script>
+  /* ── Auto-detect environment ────────────────────────────────── */
+  // If we're served from Flask (same origin), use relative URLs → works on Render
+  // If opened as a file or different port → use localhost for dev
+  function detectApiBase() {
+    const loc = window.location;
+    // Served from Flask on any host (Render, VPS, localhost:5000)
+    if (loc.protocol === 'http:' || loc.protocol === 'https:') {
+      // Same-origin: just use '' (relative URLs)
+      return loc.origin;
+    }
+    return 'http://localhost:5000';
+  }
+
+  const IS_SAME_ORIGIN = window.location.port === '5000' ||
+                         window.location.hostname !== 'localhost' ||
+                         window.location.protocol === 'https:';
+
+  function initApiBar() {
+    const base = detectApiBase();
+    document.getElementById('apiUrl').value = base;
+
+    const badge = document.getElementById('envBadge');
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      badge.textContent = 'Local';
+      badge.className = 'api-env-badge local';
+    } else {
+      badge.textContent = 'Render';
+      badge.className = 'api-env-badge render';
+    }
+  }
+
   /* ── State ── */
   let currentPage = 1;
   let currentMeta = {};
@@ -329,7 +307,6 @@
   let searchTimer = null;
   let categories = [];
 
-  /* ── Helpers ── */
   function apiBase() {
     return document.getElementById('apiUrl').value.replace(/\/$/, '');
   }
@@ -339,14 +316,12 @@
     dot.className = 'connection-dot ' + (state === 'ok' ? 'connected' : state === 'err' ? 'error' : '');
   }
 
-  /* ── Load everything ── */
   async function loadAll() {
     currentPage = 1;
     selectedIds.clear();
     await Promise.all([loadStats(), loadCategories(), loadProducts()]);
   }
 
-  /* ── Stats ── */
   async function loadStats() {
     try {
       const res = await fetch(apiBase() + '/api/stats');
@@ -358,40 +333,33 @@
       document.getElementById('s-cats').textContent = data.total_categories;
       document.getElementById('s-low').textContent = data.low_stock_count;
       document.getElementById('s-oos').textContent = data.out_of_stock_count;
-    } catch { /* stats are non-critical */ }
+    } catch { /* non-critical */ }
   }
 
-  /* ── Categories ── */
   async function loadCategories() {
     try {
       const res = await fetch(apiBase() + '/api/categories');
       if (!res.ok) throw new Error();
       const { data } = await res.json();
       categories = data;
-
       const sel = document.getElementById('filterCat');
       sel.innerHTML = '<option value="">All Categories</option>' +
         data.map(c => `<option value="${c.name}">${c.name} (${c.count})</option>`).join('');
-
       const dl = document.getElementById('catList');
       dl.innerHTML = data.map(c => `<option value="${c.name}">`).join('');
     } catch { /* non-critical */ }
   }
 
-  /* ── Products ── */
   async function loadProducts() {
     document.getElementById('tableContent').innerHTML = '<div class="loading">Loading products…</div>';
-
     const params = buildParams();
     try {
       const res = await fetch(apiBase() + '/api/products?' + params);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
-      const products = json.data;
       currentMeta = json.meta;
-
       setConnected('ok');
-      renderTable(products);
+      renderTable(json.data);
       renderPagination(json.meta);
       showToast(`${json.meta.total} products loaded`, 'success');
     } catch (e) {
@@ -410,7 +378,6 @@
     const active = document.getElementById('filterActive').value;
     const [sortField, sortOrder] = (document.getElementById('filterSort').value || 'created_at-desc').split('-');
     const limit = document.getElementById('filterLimit').value;
-
     if (q) p.set('q', q);
     if (cat) p.set('cat', cat);
     if (active !== '') p.set('active', active);
@@ -421,24 +388,14 @@
     return p.toString();
   }
 
-  function applyFilters() {
-    currentPage = 1;
-    loadProducts();
-  }
+  function applyFilters() { currentPage = 1; loadProducts(); }
+  function onSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(() => applyFilters(), 350); }
 
-  function onSearch() {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => applyFilters(), 350);
-  }
-
-  /* ── Table render ── */
   function renderTable(products) {
     if (!products.length) {
       document.getElementById('tableContent').innerHTML = '<div class="loading">No products found.</div>';
-      updateBulkBar();
-      return;
+      updateBulkBar(); return;
     }
-
     const rows = products.map(p => {
       const stockClass = p.stock === 0 ? 'out' : p.stock <= 10 ? 'low' : 'ok';
       const stockLabel = p.stock === 0 ? 'Out' : p.stock;
@@ -447,10 +404,7 @@
         <tr class="${selectedIds.has(p.id) ? 'selected' : ''}" id="row-${p.id}">
           <td><input type="checkbox" ${checked} onchange="toggleSelect('${p.id}', this.checked)" /></td>
           <td><img class="prod-img" src="${p.img || ''}" onerror="this.style.display='none'" /></td>
-          <td>
-            <div class="prod-name">${p.name}</div>
-            <div class="prod-cat">${p.cat}</div>
-          </td>
+          <td><div class="prod-name">${p.name}</div><div class="prod-cat">${p.cat}</div></td>
           <td><span class="tag-badge">${p.tag || '—'}</span></td>
           <td><span class="price">$${p.price}</span></td>
           <td><span class="stock-val ${stockClass}">${stockLabel}</span></td>
@@ -465,35 +419,24 @@
           </td>
         </tr>`;
     }).join('');
-
     document.getElementById('tableContent').innerHTML = `
       <table>
-        <thead>
-          <tr>
-            <th><input type="checkbox" onchange="toggleSelectAll(this.checked)" id="selectAllCb" /></th>
-            <th>Image</th>
-            <th>Product</th>
-            <th>Tag</th>
-            <th>Price</th>
-            <th>Stock</th>
-            <th>Active</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th><input type="checkbox" onchange="toggleSelectAll(this.checked)" id="selectAllCb" /></th>
+          <th>Image</th><th>Product</th><th>Tag</th><th>Price</th>
+          <th>Stock</th><th>Active</th><th>Actions</th>
+        </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     updateBulkBar();
   }
 
-  /* ── Pagination ── */
   function renderPagination(meta) {
     const bar = document.getElementById('paginationBar');
     if (!meta || meta.pages <= 1) { bar.style.display = 'none'; return; }
-
     bar.style.display = 'flex';
     const start = (meta.page - 1) * meta.limit + 1;
     const end = Math.min(meta.page * meta.limit, meta.total);
-
     let pages = '';
     for (let i = 1; i <= meta.pages; i++) {
       if (meta.pages > 7 && Math.abs(i - meta.page) > 2 && i !== 1 && i !== meta.pages) {
@@ -502,7 +445,6 @@
       }
       pages += `<button class="page-btn ${i === meta.page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
     }
-
     bar.innerHTML = `
       <span class="pagination-info">${start}–${end} of ${meta.total}</span>
       <div class="pagination-btns">
@@ -512,12 +454,8 @@
       </div>`;
   }
 
-  function goToPage(p) {
-    currentPage = p;
-    loadProducts();
-  }
+  function goToPage(p) { currentPage = p; loadProducts(); }
 
-  /* ── Selection ── */
   function toggleSelect(id, checked) {
     checked ? selectedIds.add(id) : selectedIds.delete(id);
     const row = document.getElementById('row-' + id);
@@ -528,8 +466,7 @@
   function toggleSelectAll(checked) {
     document.querySelectorAll('tbody input[type=checkbox]').forEach(cb => {
       cb.checked = checked;
-      const id = cb.closest('tr').id.replace('row-', '');
-      toggleSelect(id, checked);
+      toggleSelect(cb.closest('tr').id.replace('row-', ''), checked);
     });
   }
 
@@ -543,12 +480,10 @@
   }
 
   function updateBulkBar() {
-    const bar = document.getElementById('bulkBar');
-    bar.classList.toggle('visible', selectedIds.size > 0);
+    document.getElementById('bulkBar').classList.toggle('visible', selectedIds.size > 0);
     document.getElementById('bulkCount').textContent = selectedIds.size;
   }
 
-  /* ── CRUD ── */
   function openModal() {
     document.getElementById('editId').value = '';
     document.getElementById('modalTitle').textContent = 'Add Product';
@@ -560,20 +495,13 @@
     document.getElementById('modal').style.display = 'flex';
   }
 
-  function closeModal() {
-    document.getElementById('modal').style.display = 'none';
-  }
+  function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
   function previewImg() {
     const url = document.getElementById('f-img').value.trim();
     const preview = document.getElementById('imgPreview');
-    if (url.startsWith('http')) {
-      preview.src = url;
-      preview.style.display = 'block';
-      preview.onerror = () => preview.style.display = 'none';
-    } else {
-      preview.style.display = 'none';
-    }
+    if (url.startsWith('http')) { preview.src = url; preview.style.display = 'block'; preview.onerror = () => preview.style.display = 'none'; }
+    else { preview.style.display = 'none'; }
   }
 
   async function editProduct(id) {
@@ -594,16 +522,13 @@
       document.getElementById('formError').style.display = 'none';
       previewImg();
       document.getElementById('modal').style.display = 'flex';
-    } catch {
-      showToast('Could not load product', 'error');
-    }
+    } catch { showToast('Could not load product', 'error'); }
   }
 
   async function saveProduct() {
     const id = document.getElementById('editId').value;
     const saveBtn = document.getElementById('saveBtn');
     const errEl = document.getElementById('formError');
-
     const data = {
       name: document.getElementById('f-name').value.trim(),
       cat: document.getElementById('f-cat').value.trim(),
@@ -614,32 +539,18 @@
       img: document.getElementById('f-img').value.trim(),
       active: document.getElementById('f-active').value === 'true',
     };
-
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving…';
-    errEl.style.display = 'none';
-
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; errEl.style.display = 'none';
     try {
       const url = id ? `${apiBase()}/api/products/${id}` : `${apiBase()}/api/products`;
       const method = id ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
       const json = await res.json();
-
-      if (!res.ok) {
-        errEl.textContent = json.error || 'Save failed';
-        errEl.style.display = 'block';
-        return;
-      }
-
-      closeModal();
-      showToast(id ? 'Product updated' : 'Product created', 'success');
-      loadAll();
+      if (!res.ok) { errEl.textContent = json.error || 'Save failed'; errEl.style.display = 'block'; return; }
+      closeModal(); showToast(id ? 'Product updated' : 'Product created', 'success'); loadAll();
     } catch (e) {
-      errEl.textContent = 'Network error: ' + e.message;
-      errEl.style.display = 'block';
+      errEl.textContent = 'Network error: ' + e.message; errEl.style.display = 'block';
     } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Save Product';
+      saveBtn.disabled = false; saveBtn.textContent = 'Save Product';
     }
   }
 
@@ -648,12 +559,8 @@
     try {
       const res = await fetch(apiBase() + '/api/products/' + id, { method: 'DELETE' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      showToast(`"${name}" deleted`, 'success');
-      selectedIds.delete(id);
-      loadAll();
-    } catch (e) {
-      showToast('Delete failed: ' + e.message, 'error');
-    }
+      showToast(`"${name}" deleted`, 'success'); selectedIds.delete(id); loadAll();
+    } catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
   }
 
   async function toggleProduct(id) {
@@ -661,11 +568,8 @@
       const res = await fetch(apiBase() + '/api/products/' + id + '/toggle', { method: 'POST' });
       if (!res.ok) throw new Error();
       const { data } = await res.json();
-      showToast(data.active ? 'Product activated' : 'Product deactivated', 'success');
-      loadAll();
-    } catch (e) {
-      showToast('Toggle failed: ' + e.message, 'error');
-    }
+      showToast(data.active ? 'Product activated' : 'Product deactivated', 'success'); loadAll();
+    } catch (e) { showToast('Toggle failed: ' + e.message, 'error'); }
   }
 
   async function bulkAction(action) {
@@ -674,35 +578,28 @@
     if (action === 'delete' && !confirm(`Delete ${ids.length} product(s)?`)) return;
     try {
       const res = await fetch(apiBase() + '/api/products/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ids }),
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const { data } = await res.json();
-      showToast(`${data.affected} product(s) ${action}d`, 'success');
-      selectedIds.clear();
-      loadAll();
-    } catch (e) {
-      showToast('Bulk action failed: ' + e.message, 'error');
-    }
+      showToast(`${data.affected} product(s) ${action}d`, 'success'); selectedIds.clear(); loadAll();
+    } catch (e) { showToast('Bulk action failed: ' + e.message, 'error'); }
   }
 
-  /* ── Toast ── */
   let toastTimer;
   function showToast(msg, type) {
     clearTimeout(toastTimer);
     const existing = document.getElementById('_toast');
     if (existing) existing.remove();
     const t = document.createElement('div');
-    t.id = '_toast';
-    t.className = 'toast ' + type;
-    t.textContent = msg;
+    t.id = '_toast'; t.className = 'toast ' + type; t.textContent = msg;
     document.body.appendChild(t);
     toastTimer = setTimeout(() => t.remove(), 3500);
   }
 
   /* ── Boot ── */
+  initApiBar();
   loadAll();
 </script>
 </body>
