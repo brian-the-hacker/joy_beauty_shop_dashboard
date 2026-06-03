@@ -13,6 +13,7 @@
     --gold: #FFD700; --gold-dim: rgba(255,215,0,0.6); --gold-faint: rgba(255,215,0,0.08);
     --navy: #0f2447; --navy-light: rgba(27,58,107,0.6); --border: rgba(255,215,0,0.12);
     --text-dim: rgba(255,255,255,0.5); --text-mid: rgba(255,255,255,0.75);
+    --danger: #f44336; --danger-dim: rgba(244,67,54,0.6); --success: #4caf50;
   }
 
   .dashboard { display: flex; min-height: 100vh; }
@@ -48,7 +49,6 @@
   }
   .topbar-left { display: flex; align-items: center; gap: 16px; }
   .topbar-title { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--text-dim); }
-  .breadcrumb { font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: .1em; }
   .topbar-right { display: flex; gap: 8px; align-items: center; }
 
   .btn { padding: 8px 18px; font-size: 10px; letter-spacing: .15em; text-transform: uppercase; font-weight: 500; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -56,9 +56,9 @@
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,215,0,0.3); }
   .btn-ghost { background: transparent; border: 1px solid rgba(255,215,0,0.3); color: var(--gold-dim); }
   .btn-ghost:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-faint); }
-  .btn-danger { background: transparent; border: 1px solid rgba(220,50,50,0.3); color: #ff8888; }
-  .btn-danger:hover { background: rgba(220,50,50,0.1); border-color: rgba(220,50,50,0.6); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+  .btn-danger { background: transparent; border: 1px solid rgba(220,50,50,0.4); color: #ff8888; }
+  .btn-danger:hover { background: rgba(220,50,50,0.12); border-color: rgba(220,50,50,0.7); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
   .content { padding: 24px 28px; }
 
@@ -115,8 +115,10 @@
   tbody tr:hover { background: rgba(255,215,0,0.03); }
   tbody tr.selected { background: rgba(255,215,0,0.05); }
   tbody td { padding: 11px 12px; font-size: 11px; color: var(--text-mid); vertical-align: middle; }
+  tbody tr.deleting { opacity: 0.4; pointer-events: none; transition: opacity .3s; }
 
   .prod-img { width: 38px; height: 38px; object-fit: cover; background: rgba(255,215,0,0.06); display: block; border: 1px solid var(--border); }
+  .prod-img-placeholder { width: 38px; height: 38px; background: rgba(255,215,0,0.06); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
   .prod-name { font-size: 12px; color: #fff; font-weight: 500; }
   .prod-cat { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 2px; }
   .tag-pill { display: inline-block; padding: 2px 8px; font-size: 8px; letter-spacing: .12em; border: 1px solid rgba(255,215,0,0.35); color: rgba(255,215,0,0.85); text-transform: uppercase; }
@@ -131,6 +133,7 @@
   .act-btn { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.4); padding: 4px 9px; font-size: 9px; cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; margin-right: 4px; letter-spacing: .06em; }
   .act-btn:hover { border-color: rgba(255,215,0,0.4); color: var(--gold); }
   .act-btn.del:hover { border-color: rgba(220,50,50,0.5); color: #ff8888; }
+  .act-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
   .pagination { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); justify-content: space-between; flex-wrap: wrap; }
   .pag-info { font-size: 9px; color: rgba(255,255,255,0.3); }
@@ -141,26 +144,84 @@
   .pag-btn:disabled { opacity: 0.25; cursor: default; }
 
   .loading { text-align: center; padding: 48px; color: var(--gold-dim); font-size: 10px; letter-spacing: .3em; text-transform: uppercase; }
+  .err-state { text-align: center; padding: 48px; }
+  .err-state .err-icon { font-size: 32px; margin-bottom: 12px; }
+  .err-state .err-title { color: #ff8888; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .err-state .err-msg { font-size: 10px; color: rgba(255,255,255,0.3); margin-bottom: 16px; font-family: monospace; }
+
+  /* ── Confirm Dialog ── */
+  .confirm-overlay { position: fixed; inset: 0; background: rgba(5,12,30,0.92); z-index: 300; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+  .confirm-box { background: #0d1f3c; border: 1px solid rgba(244,67,54,0.35); width: 420px; max-width: 96vw; padding: 28px 28px 24px; }
+  .confirm-icon { font-size: 28px; margin-bottom: 10px; }
+  .confirm-title { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 300; margin-bottom: 8px; }
+  .confirm-msg { font-size: 11px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+  .confirm-msg strong { color: #fff; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .confirm-list { max-height: 120px; overflow-y: auto; margin: 10px 0; background: rgba(0,0,0,0.2); padding: 8px 12px; border-left: 2px solid rgba(244,67,54,0.3); }
+  .confirm-list li { font-size: 10px; color: rgba(255,255,255,0.5); padding: 2px 0; list-style: none; }
+  .confirm-list li::before { content: '· '; color: rgba(244,67,54,0.5); }
 
   /* ── Modal ── */
   .overlay { position: fixed; inset: 0; background: rgba(5,12,30,0.9); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
-  .modal { background: #0d1f3c; border: 1px solid rgba(255,215,0,0.22); width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+  .modal { background: #0d1f3c; border: 1px solid rgba(255,215,0,0.22); width: 580px; max-width: 96vw; max-height: 94vh; overflow-y: auto; }
   .modal-head { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #0d1f3c; z-index: 1; }
   .modal-head h3 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 300; }
   .modal-close { background: transparent; border: none; color: rgba(255,255,255,0.35); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
   .modal-close:hover { color: #fff; }
   .modal-body { padding: 24px; }
-  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
 
+  /* ── Bulk Add ── */
+  .bulk-add-tabs { display: flex; gap: 0; margin-bottom: 16px; }
+  .bulk-add-tab { flex: 1; padding: 8px; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; background: rgba(10,25,55,0.6); border: 1px solid rgba(255,215,0,0.15); color: var(--text-dim); cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; }
+  .bulk-add-tab.active { background: rgba(255,215,0,0.1); border-color: rgba(255,215,0,0.4); color: var(--gold); }
+  .bulk-add-tab:not(:last-child) { border-right: none; }
+
+  .product-rows { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+  .product-rows::-webkit-scrollbar { width: 4px; }
+  .product-rows::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+  .product-rows::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); }
+
+  .product-row { background: rgba(10,25,55,0.5); border: 1px solid rgba(255,215,0,0.1); padding: 12px; position: relative; }
+  .product-row-num { position: absolute; top: 8px; left: 10px; font-size: 9px; color: rgba(255,215,0,0.3); letter-spacing: .1em; }
+  .product-row .frow { margin-top: 4px; }
+  .product-row .remove-row { position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: rgba(255,255,255,0.2); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; transition: color .2s; }
+  .product-row .remove-row:hover { color: #ff8888; }
+
+  .add-row-btn { background: rgba(255,215,0,0.04); border: 1px dashed rgba(255,215,0,0.2); color: var(--gold-dim); font-size: 10px; letter-spacing: .12em; padding: 10px; cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; text-align: center; text-transform: uppercase; width: 100%; }
+  .add-row-btn:hover { background: rgba(255,215,0,0.08); border-color: rgba(255,215,0,0.4); color: var(--gold); }
+
+  /* CSV zone */
+  .csv-drop { border: 2px dashed rgba(255,215,0,0.2); padding: 24px; text-align: center; cursor: pointer; transition: all .2s; position: relative; background: rgba(10,25,55,0.4); }
+  .csv-drop:hover, .csv-drop.drag { border-color: rgba(255,215,0,0.5); background: rgba(255,215,0,0.04); }
+  .csv-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .csv-hint { font-size: 10px; color: var(--text-dim); margin-top: 8px; }
+  .csv-hint code { color: var(--gold-dim); font-size: 9px; }
+  .csv-preview { margin-top: 12px; font-size: 10px; color: rgba(255,255,255,0.4); }
+
+  /* Progress / Results */
+  .bulk-progress-wrap { display: none; }
+  .bulk-progress-bar-outer { height: 4px; background: rgba(255,255,255,0.06); margin: 10px 0; }
+  .bulk-progress-bar-inner { height: 100%; background: linear-gradient(90deg, #FFD700, #FFE34D); transition: width .2s; width: 0%; }
+  .bulk-result-list { max-height: 180px; overflow-y: auto; margin-top: 10px; }
+  .bulk-result-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .bulk-result-item.ok  { color: #90ee90; }
+  .bulk-result-item.err { color: #ff8888; }
+  .bulk-result-item .ri-name { flex: 1; }
+  .bulk-result-item .ri-status { font-size: 9px; opacity: .7; }
+
+  /* ── Form ── */
   .fgroup { margin-bottom: 16px; }
   .flabel { display: block; font-size: 8px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 6px; }
   .finput { width: 100%; padding: 9px 12px; background: rgba(10,25,55,0.8); border: 1px solid rgba(255,215,0,0.18); color: #fff; font-size: 12px; font-family: 'Montserrat', sans-serif; outline: none; transition: border .2s; }
   .finput:focus { border-color: rgba(255,215,0,0.45); }
+  .finput.error { border-color: rgba(244,67,54,0.6); }
   textarea.finput { resize: vertical; min-height: 68px; }
   .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .ferr { font-size: 10px; color: #ff8888; margin-top: 6px; display: none; }
+  .ferr { font-size: 10px; color: #ff8888; margin-top: 6px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(244,67,54,0.07); border: 1px solid rgba(244,67,54,0.2); }
+  .ferr-icon { flex-shrink: 0; }
 
-  /* ── Image upload area ── */
+  /* ── Image upload ── */
   .img-section { display: flex; flex-direction: column; gap: 10px; }
   .img-tabs { display: flex; gap: 0; }
   .img-tab { flex: 1; padding: 8px; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; background: rgba(10,25,55,0.6); border: 1px solid rgba(255,215,0,0.15); color: var(--text-dim); cursor: pointer; font-family: 'Montserrat', sans-serif; transition: all .2s; }
@@ -176,21 +237,30 @@
   .upload-icon { font-size: 28px; margin-bottom: 8px; opacity: .5; }
   .upload-hint { font-size: 10px; color: var(--text-dim); letter-spacing: .08em; }
   .upload-hint span { color: var(--gold); }
-
   .upload-progress { height: 3px; background: rgba(255,215,0,0.1); margin-top: 8px; display: none; }
   .upload-progress-bar { height: 100%; background: linear-gradient(90deg, #FFD700, #FFE34D); width: 0%; transition: width .3s; }
-
   .img-preview-wrap { position: relative; display: none; }
   .img-preview { width: 100%; height: 130px; object-fit: cover; border: 1px solid var(--border); display: block; }
   .img-preview-remove { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); border: none; color: #fff; width: 22px; height: 22px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
 
   /* ── Toast ── */
-  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; font-size: 11px; letter-spacing: .1em; z-index: 999; animation: toastIn .3s ease; border-left: 3px solid; max-width: 300px; backdrop-filter: blur(8px); }
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 320px; }
+  .toast { padding: 12px 16px; font-size: 11px; letter-spacing: .08em; animation: toastIn .3s ease; border-left: 3px solid; backdrop-filter: blur(8px); display: flex; align-items: flex-start; gap: 10px; }
   .toast.success { background: rgba(8,40,20,0.95); border-color: #4caf50; color: #90ee90; }
   .toast.error   { background: rgba(40,8,8,0.95);  border-color: #f44336; color: #ffaaaa; }
+  .toast.info    { background: rgba(8,20,50,0.95);  border-color: #88ccff; color: #bbddff; }
+  .toast-msg { flex: 1; line-height: 1.5; }
+  .toast-close { background: none; border: none; color: inherit; cursor: pointer; opacity: .5; font-size: 14px; padding: 0; line-height: 1; flex-shrink: 0; }
+  .toast-close:hover { opacity: 1; }
   @keyframes toastIn { from{transform:translateX(50px);opacity:0} to{transform:translateX(0);opacity:1} }
+  @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(50px)} }
 
   input[type=checkbox] { accent-color: var(--gold); width: 14px; height: 14px; cursor: pointer; }
+
+  /* ── Scrollbars ── */
+  .modal::-webkit-scrollbar { width: 4px; }
+  .modal::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+  .modal::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); }
 </style>
 </head>
 <body>
@@ -207,15 +277,15 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/></svg>
         Products
       </div>
-      <div class="nav-item" onclick="toast('Coming soon','success')">
+      <div class="nav-item" onclick="toastMsg('Coming soon','info')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
         Orders
       </div>
-      <div class="nav-item" onclick="toast('Coming soon','success')">
+      <div class="nav-item" onclick="toastMsg('Coming soon','info')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Analytics
       </div>
-      <div class="nav-item" onclick="toast('Coming soon','success')">
+      <div class="nav-item" onclick="toastMsg('Coming soon','info')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         Settings
       </div>
@@ -231,7 +301,8 @@
       </div>
       <div class="topbar-right">
         <button class="btn btn-ghost" onclick="loadAll()">↻ Refresh</button>
-        <button class="btn btn-primary" onclick="openModal()">+ Add Product</button>
+        <button class="btn btn-ghost" onclick="openBulkAdd()">＋ Bulk Add</button>
+        <button class="btn btn-primary" onclick="openModal()">＋ Add Product</button>
       </div>
     </div>
 
@@ -284,7 +355,7 @@
         <span><span class="bulk-count" id="bulkCount">0</span> selected</span>
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:9px" onclick="bulkAction('activate')">Activate</button>
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:9px" onclick="bulkAction('deactivate')">Deactivate</button>
-        <button class="btn btn-danger" style="padding:5px 10px;font-size:9px" onclick="bulkAction('delete')">Delete</button>
+        <button class="btn btn-danger" style="padding:5px 10px;font-size:9px" id="bulkDeleteBtn" onclick="confirmBulkDelete()">🗑 Delete Selected</button>
         <button class="btn btn-ghost" style="padding:5px 10px;font-size:9px" onclick="clearSel()">Clear</button>
         <div class="bulk-cat-wrap">
           <span style="font-size:9px;color:var(--gold-dim);letter-spacing:.1em;white-space:nowrap">ASSIGN CATEGORY:</span>
@@ -311,7 +382,7 @@
   </div>
 </div>
 
-<!-- Modal -->
+<!-- ── Single Product Modal ── -->
 <div id="modal" class="overlay" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-head">
@@ -367,8 +438,6 @@
             <button class="img-tab active" id="tabUpload" onclick="switchTab('upload')">↑ Upload File</button>
             <button class="img-tab" id="tabUrl" onclick="switchTab('url')">🔗 Paste URL</button>
           </div>
-
-          <!-- Upload panel -->
           <div id="panelUpload">
             <div class="upload-drop" id="dropZone"
               ondragover="event.preventDefault();this.classList.add('drag')"
@@ -384,21 +453,20 @@
             </div>
             <div style="font-size:9px;color:rgba(255,215,0,0.4);margin-top:6px;letter-spacing:.08em" id="uploadStatus"></div>
           </div>
-
-          <!-- URL panel -->
           <div id="panelUrl" style="display:none">
             <input class="finput" id="f-img-url" placeholder="https://res.cloudinary.com/…" oninput="urlPreview()" />
           </div>
-
-          <!-- Preview -->
           <div class="img-preview-wrap" id="previewWrap">
-            <img class="img-preview" id="imgPreview" />
+            <img class="img-preview" id="imgPreview" alt="Preview" />
             <button class="img-preview-remove" onclick="clearImage()" title="Remove">×</button>
           </div>
         </div>
       </div>
 
-      <div class="ferr" id="formErr"></div>
+      <div class="ferr" id="formErr" style="display:none">
+        <span class="ferr-icon">⚠</span>
+        <span id="formErrMsg"></span>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -407,12 +475,95 @@
   </div>
 </div>
 
-<script>
-/* ── State ── */
-let page = 1, meta = {}, selIds = new Set(), searchTimer = null, cats = [];
-let currentImgUrl = ''; // final URL stored here regardless of tab
+<!-- ── Bulk Add Modal ── -->
+<div id="bulkModal" class="overlay" style="display:none" onclick="if(event.target===this)closeBulkAdd()">
+  <div class="modal" style="width:640px">
+    <div class="modal-head">
+      <h3>Bulk Add Products</h3>
+      <button class="modal-close" onclick="closeBulkAdd()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="bulk-add-tabs">
+        <button class="bulk-add-tab active" id="baTabForm" onclick="switchBulkTab('form')">📝 Fill Form</button>
+        <button class="bulk-add-tab" id="baTabCsv" onclick="switchBulkTab('csv')">📄 CSV Upload</button>
+      </div>
 
-/* ── API Base ── */
+      <!-- Form panel -->
+      <div id="baPanelForm">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:.1em;margin-bottom:12px">
+          Add multiple products at once. All rows will be submitted together.
+        </div>
+        <div class="product-rows" id="productRows"></div>
+        <button class="add-row-btn" onclick="addProductRow()" style="margin-top:10px">＋ Add Another Product</button>
+      </div>
+
+      <!-- CSV panel -->
+      <div id="baPanelCsv" style="display:none">
+        <div class="csv-drop" id="csvDrop"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleCsvDrop(event)">
+          <input type="file" accept=".csv,text/csv" id="csvInput" onchange="handleCsvSelect(event)" />
+          <div style="font-size:28px;opacity:.4;margin-bottom:8px">📄</div>
+          <div style="font-size:11px;color:var(--text-mid)">Drop CSV file here or <span style="color:var(--gold)">click to browse</span></div>
+          <div class="csv-hint">Required columns: <code>name, cat</code> — optional: <code>tag, stock, desc, img, active</code></div>
+        </div>
+        <div id="csvPreview" class="csv-preview"></div>
+        <div style="margin-top:12px">
+          <a href="#" onclick="downloadCsvTemplate(event)" style="font-size:9px;color:var(--gold-dim);letter-spacing:.1em;text-decoration:none">⬇ Download CSV template</a>
+        </div>
+      </div>
+
+      <!-- Progress / Results -->
+      <div class="bulk-progress-wrap" id="bulkProgressWrap">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:14px;letter-spacing:.1em" id="bulkProgressLabel">Preparing…</div>
+        <div class="bulk-progress-bar-outer">
+          <div class="bulk-progress-bar-inner" id="bulkProgressBar"></div>
+        </div>
+        <div class="bulk-result-list" id="bulkResultList"></div>
+      </div>
+
+      <div class="ferr" id="bulkFormErr" style="display:none">
+        <span class="ferr-icon">⚠</span>
+        <span id="bulkFormErrMsg"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:9px;color:var(--text-dim);letter-spacing:.08em" id="bulkSummary"></span>
+      <button class="btn btn-ghost" onclick="closeBulkAdd()">Cancel</button>
+      <button class="btn btn-primary" id="bulkSaveBtn" onclick="saveBulkProducts()">Submit All</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Dialog ── -->
+<div id="confirmDialog" class="confirm-overlay" style="display:none">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirmIcon">🗑</div>
+    <div class="confirm-title" id="confirmTitle">Confirm Delete</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="confirmResolve(false)">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="confirmResolve(true)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script>
+/* ══════════════════════════════
+   STATE
+══════════════════════════════ */
+let page = 1, meta = {}, selIds = new Set(), searchTimer = null, cats = [];
+let currentImgUrl = '';
+let csvProducts = [];
+let confirmCallback = null;
+
+/* ══════════════════════════════
+   API BASE
+══════════════════════════════ */
 function api() { return document.getElementById('apiUrl').value.replace(/\/$/, ''); }
 
 function initApiBar() {
@@ -428,7 +579,9 @@ function setConn(state) {
   document.getElementById('connDot').className = 'conn-dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : '');
 }
 
-/* ── Load ── */
+/* ══════════════════════════════
+   LOAD
+══════════════════════════════ */
 async function loadAll() {
   page = 1; selIds.clear();
   await Promise.all([loadStats(), loadCats(), loadProducts()]);
@@ -475,24 +628,36 @@ async function loadProducts() {
   p.set('sort', sf); p.set('order', so); p.set('limit', limit); p.set('page', page);
   try {
     const r = await fetch(api() + '/api/products?' + p);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
     const json = await r.json();
     meta = json.meta; setConn('ok');
     renderTable(json.data);
     renderPagination(json.meta);
-    toast(json.meta.total + ' products loaded', 'success');
+    toastMsg(json.meta.total + ' products loaded', 'success');
   } catch (e) {
     setConn('err');
-    document.getElementById('tableContent').innerHTML = `<div class="loading" style="color:#ff8888">Could not connect.<br><small style="opacity:.5">${e.message}</small></div>`;
+    document.getElementById('tableContent').innerHTML = `
+      <div class="err-state">
+        <div class="err-icon">⚡</div>
+        <div class="err-title">Could not connect to API</div>
+        <div class="err-msg">${escHtml(e.message)}</div>
+        <button class="btn btn-ghost" onclick="loadAll()">↻ Retry</button>
+      </div>`;
     document.getElementById('pagBar').style.display = 'none';
-    toast('Connection failed', 'error');
+    toastMsg('Connection failed: ' + e.message, 'error');
   }
 }
 
 function applyFilters() { page = 1; loadProducts(); }
 function onSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(applyFilters, 350); }
 
-/* ── Table ── */
+/* ══════════════════════════════
+   TABLE
+══════════════════════════════ */
 function renderTable(products) {
   if (!products.length) {
     document.getElementById('tableContent').innerHTML = '<div class="loading">No products found.</div>';
@@ -502,27 +667,30 @@ function renderTable(products) {
     const sc = p.stock === 0 ? 'color:#ff6b6b' : p.stock <= 10 ? 'color:#ffaa44' : 'color:rgba(255,255,255,0.6)';
     const sl = p.stock === 0 ? 'Out' : p.stock;
     const chk = selIds.has(p.id) ? 'checked' : '';
+    const imgCell = p.img
+      ? `<img class="prod-img" src="${escAttr(p.img)}" alt="${escAttr(p.name)}" onerror="this.parentElement.innerHTML='<div class=\\'prod-img-placeholder\\'>📦</div>'" />`
+      : `<div class="prod-img-placeholder">📦</div>`;
     return `<tr class="${selIds.has(p.id)?'selected':''}" id="row-${p.id}">
-      <td><input type="checkbox" ${chk} onchange="toggleSel('${p.id}',this.checked)" /></td>
-      <td>${p.img ? `<img class="prod-img" src="${p.img}" onerror="this.style.display='none'" />` : '<div class="prod-img"></div>'}</td>
-      <td><div class="prod-name">${p.name}</div><div class="prod-cat">${p.cat}</div></td>
-      <td>${p.tag ? `<span class="tag-pill">${p.tag}</span>` : '<span style="color:rgba(255,255,255,0.2)">—</span>'}</td>
+      <td><input type="checkbox" ${chk} onchange="toggleSel('${escAttr(p.id)}',this.checked)" /></td>
+      <td>${imgCell}</td>
+      <td><div class="prod-name">${escHtml(p.name)}</div><div class="prod-cat">${escHtml(p.cat)}</div></td>
+      <td>${p.tag ? `<span class="tag-pill">${escHtml(p.tag)}</span>` : '<span style="color:rgba(255,255,255,0.2)">—</span>'}</td>
       <td><span style="${sc};font-size:12px">${sl}</span></td>
       <td>
-        <button class="toggle-btn ${p.active?'on':'off'}" onclick="toggleProduct('${p.id}')" title="${p.active?'Active':'Inactive'}">
+        <button class="toggle-btn ${p.active?'on':'off'}" onclick="toggleProduct('${escAttr(p.id)}')" title="${p.active?'Active':'Inactive'}">
           <div class="toggle-dot"></div>
         </button>
       </td>
       <td>
-        <button class="act-btn" onclick="editProduct('${p.id}')">Edit</button>
-        <button class="act-btn del" onclick="delProduct('${p.id}','${p.name.replace(/'/g,"\\'")}')">Delete</button>
+        <button class="act-btn" onclick="editProduct('${escAttr(p.id)}')">Edit</button>
+        <button class="act-btn del" onclick="confirmDeleteOne('${escAttr(p.id)}','${escAttr(p.name)}')">Delete</button>
       </td>
     </tr>`;
   }).join('');
   document.getElementById('tableContent').innerHTML = `
     <table>
       <thead><tr>
-        <th><input type="checkbox" onchange="toggleAll(this.checked)" id="cbAll" /></th>
+        <th><input type="checkbox" onchange="toggleAll(this.checked)" id="cbAll" title="Select all" /></th>
         <th>Image</th><th>Product</th><th>Tag</th><th>Stock</th><th>Active</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -553,7 +721,9 @@ function renderPagination(m) {
 
 function goPage(p) { page = p; loadProducts(); }
 
-/* ── Selection ── */
+/* ══════════════════════════════
+   SELECTION
+══════════════════════════════ */
 function toggleSel(id, checked) {
   checked ? selIds.add(id) : selIds.delete(id);
   const row = document.getElementById('row-'+id);
@@ -562,8 +732,13 @@ function toggleSel(id, checked) {
 }
 function toggleAll(checked) {
   document.querySelectorAll('tbody input[type=checkbox]').forEach(cb => {
-    cb.checked = checked; toggleSel(cb.closest('tr').id.replace('row-',''), checked);
+    const id = cb.closest('tr').id.replace('row-','');
+    cb.checked = checked;
+    if (checked) selIds.add(id); else selIds.delete(id);
+    const row = document.getElementById('row-'+id);
+    if (row) row.classList.toggle('selected', checked);
   });
+  updateBulkBar();
 }
 function clearSel() {
   selIds.clear();
@@ -577,59 +752,184 @@ function updateBulkBar() {
   document.getElementById('bulkCount').textContent = selIds.size;
 }
 
-/* ── Bulk actions ── */
+/* ══════════════════════════════
+   CONFIRM DIALOG
+══════════════════════════════ */
+function showConfirm({ icon='🗑', title='Confirm', message='', okLabel='Confirm', okClass='btn-danger' }) {
+  return new Promise(resolve => {
+    confirmCallback = resolve;
+    document.getElementById('confirmIcon').textContent = icon;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').innerHTML = message;
+    document.getElementById('confirmOkBtn').textContent = okLabel;
+    document.getElementById('confirmOkBtn').className = 'btn ' + okClass;
+    document.getElementById('confirmDialog').style.display = 'flex';
+  });
+}
+function confirmResolve(val) {
+  document.getElementById('confirmDialog').style.display = 'none';
+  if (confirmCallback) { confirmCallback(val); confirmCallback = null; }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') confirmResolve(false); });
+
+/* ══════════════════════════════
+   DELETE — SINGLE
+══════════════════════════════ */
+async function confirmDeleteOne(id, name) {
+  const ok = await showConfirm({
+    icon: '🗑',
+    title: 'Delete Product',
+    message: `Are you sure you want to delete <strong>${escHtml(name)}</strong>? This cannot be undone.`,
+    okLabel: 'Delete',
+    okClass: 'btn-danger'
+  });
+  if (!ok) return;
+  const row = document.getElementById('row-'+id);
+  if (row) row.classList.add('deleting');
+  try {
+    const r = await fetch(api()+'/api/products/'+id, { method: 'DELETE' });
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    toastMsg(`"${name}" deleted`, 'success');
+    selIds.delete(id);
+    loadAll();
+  } catch (e) {
+    if (row) row.classList.remove('deleting');
+    toastMsg('Delete failed: ' + e.message, 'error');
+  }
+}
+
+/* ══════════════════════════════
+   DELETE — BULK (proper)
+══════════════════════════════ */
+async function confirmBulkDelete() {
+  if (!selIds.size) return;
+  const ids = [...selIds];
+
+  // Build a name list for the dialog
+  const rows = ids.map(id => {
+    const row = document.getElementById('row-'+id);
+    const name = row ? row.querySelector('.prod-name')?.textContent || id : id;
+    return `<li>${escHtml(name)}</li>`;
+  }).join('');
+
+  const ok = await showConfirm({
+    icon: '⚠️',
+    title: `Delete ${ids.length} Product${ids.length > 1 ? 's' : ''}`,
+    message: `You are about to permanently delete the following product${ids.length > 1 ? 's' : ''}:
+      <ul class="confirm-list" style="margin-top:10px">${rows}</ul>
+      This action <strong>cannot be undone</strong>.`,
+    okLabel: `Delete ${ids.length} Product${ids.length > 1 ? 's' : ''}`,
+    okClass: 'btn-danger'
+  });
+  if (!ok) return;
+
+  // Try bulk endpoint first, fall back to sequential individual deletes
+  try {
+    const r = await fetch(api()+'/api/products/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', ids })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const { data } = await r.json();
+    toastMsg(`${data.affected} product(s) deleted`, 'success');
+    clearSel(); loadAll();
+  } catch (bulkErr) {
+    // Fallback: delete one-by-one
+    toastMsg(`Bulk endpoint unavailable, deleting ${ids.length} individually…`, 'info');
+    await deleteManySequential(ids);
+  }
+}
+
+async function deleteManySequential(ids) {
+  let ok = 0, fail = 0, failNames = [];
+  for (const id of ids) {
+    const row = document.getElementById('row-'+id);
+    const name = row ? row.querySelector('.prod-name')?.textContent || id : id;
+    if (row) row.classList.add('deleting');
+    try {
+      const r = await fetch(api()+'/api/products/'+id, { method: 'DELETE' });
+      if (!r.ok) {
+        let msg = 'HTTP ' + r.status;
+        try { const j = await r.json(); msg = j.error || msg; } catch {}
+        throw new Error(msg);
+      }
+      ok++;
+      selIds.delete(id);
+    } catch (e) {
+      fail++;
+      failNames.push(name);
+      if (row) row.classList.remove('deleting');
+    }
+  }
+  if (ok > 0) toastMsg(`${ok} product(s) deleted`, 'success');
+  if (fail > 0) toastMsg(`Failed to delete: ${failNames.slice(0,3).join(', ')}${failNames.length > 3 ? '…' : ''}`, 'error');
+  updateBulkBar();
+  loadAll();
+}
+
+/* ══════════════════════════════
+   BULK ACTIONS (non-delete)
+══════════════════════════════ */
 async function bulkAction(action) {
   if (!selIds.size) return;
   const ids = [...selIds];
-  if (action==='delete' && !confirm(`Delete ${ids.length} product(s)?`)) return;
   try {
     const r = await fetch(api()+'/api/products/bulk', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action, ids})
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ids })
     });
-    if (!r.ok) throw new Error('HTTP '+r.status);
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
     const { data } = await r.json();
-    toast(`${data.affected} product(s) ${action}d`, 'success'); clearSel(); loadAll();
-  } catch (e) { toast('Bulk failed: '+e.message, 'error'); }
+    toastMsg(`${data.affected} product(s) ${action}d`, 'success'); clearSel(); loadAll();
+  } catch (e) { toastMsg('Bulk action failed: ' + e.message, 'error'); }
 }
 
 async function bulkSetCategory() {
-  if (!selIds.size) { toast('Select products first', 'error'); return; }
+  if (!selIds.size) { toastMsg('Select products first', 'error'); return; }
   const cat = document.getElementById('bulkCatInput').value.trim();
-  if (!cat) { toast('Enter a category name', 'error'); return; }
+  if (!cat) { toastMsg('Enter a category name', 'error'); return; }
   try {
     const r = await fetch(api()+'/api/products/bulk', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action:'set_category', ids:[...selIds], category:cat})
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set_category', ids: [...selIds], category: cat })
     });
-    if (!r.ok) throw new Error('HTTP '+r.status);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const { data } = await r.json();
-    toast(`Category updated for ${data.affected} product(s)`, 'success');
+    toastMsg(`Category updated for ${data.affected} product(s)`, 'success');
     document.getElementById('bulkCatInput').value = '';
     clearSel(); loadAll();
-  } catch (e) { toast('Failed: '+e.message, 'error'); }
+  } catch (e) { toastMsg('Failed: ' + e.message, 'error'); }
 }
 
-/* ── Toggle / Delete ── */
+/* ══════════════════════════════
+   TOGGLE
+══════════════════════════════ */
 async function toggleProduct(id) {
   try {
-    const r = await fetch(api()+'/api/products/'+id+'/toggle', {method:'POST'});
-    if (!r.ok) throw new Error();
+    const r = await fetch(api()+'/api/products/'+id+'/toggle', { method: 'POST' });
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
     const { data } = await r.json();
-    toast(data.active ? 'Activated' : 'Deactivated', 'success'); loadAll();
-  } catch { toast('Toggle failed', 'error'); }
+    toastMsg(data.active ? 'Product activated' : 'Product deactivated', 'success');
+    loadAll();
+  } catch (e) { toastMsg('Toggle failed: ' + e.message, 'error'); }
 }
 
-async function delProduct(id, name) {
-  if (!confirm(`Delete "${name}"?`)) return;
-  try {
-    const r = await fetch(api()+'/api/products/'+id, {method:'DELETE'});
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    toast(`"${name}" deleted`, 'success'); selIds.delete(id); loadAll();
-  } catch (e) { toast('Delete failed: '+e.message, 'error'); }
-}
-
-/* ── Modal ── */
+/* ══════════════════════════════
+   SINGLE PRODUCT MODAL
+══════════════════════════════ */
 function openModal() {
   document.getElementById('editId').value = '';
   document.getElementById('modalTitle').textContent = 'Add Product';
@@ -637,9 +937,10 @@ function openModal() {
   document.getElementById('f-stock').value = '0';
   document.getElementById('f-active').value = 'true';
   document.getElementById('f-img-url').value = '';
-  document.getElementById('formErr').style.display = 'none';
+  hideFormErr();
   clearImage(); switchTab('upload');
   document.getElementById('modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('f-name').focus(), 50);
 }
 
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
@@ -647,61 +948,342 @@ function closeModal() { document.getElementById('modal').style.display = 'none';
 async function editProduct(id) {
   try {
     const r = await fetch(api()+'/api/products/'+id);
-    if (!r.ok) throw new Error();
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
     const { data: p } = await r.json();
     document.getElementById('editId').value = p.id;
     document.getElementById('modalTitle').textContent = 'Edit Product';
-    document.getElementById('f-name').value  = p.name || '';
-    document.getElementById('f-cat').value   = p.cat  || '';
-    document.getElementById('f-tag').value   = p.tag  || '';
+    document.getElementById('f-name').value  = p.name  || '';
+    document.getElementById('f-cat').value   = p.cat   || '';
+    document.getElementById('f-tag').value   = p.tag   || '';
     document.getElementById('f-stock').value = p.stock ?? 0;
-    document.getElementById('f-desc').value  = p.desc || '';
+    document.getElementById('f-desc').value  = p.desc  || '';
     document.getElementById('f-active').value = p.active ? 'true' : 'false';
-    document.getElementById('formErr').style.display = 'none';
+    hideFormErr();
     currentImgUrl = p.img || '';
-    if (p.img) {
-      switchTab('url');
-      document.getElementById('f-img-url').value = p.img;
-      showPreview(p.img);
-    } else {
-      clearImage(); switchTab('upload');
-    }
+    if (p.img) { switchTab('url'); document.getElementById('f-img-url').value = p.img; showPreview(p.img); }
+    else { clearImage(); switchTab('upload'); }
     document.getElementById('modal').style.display = 'flex';
-  } catch { toast('Could not load product', 'error'); }
+  } catch (e) { toastMsg('Could not load product: ' + e.message, 'error'); }
 }
 
 async function saveProduct() {
   const id = document.getElementById('editId').value;
   const saveBtn = document.getElementById('saveBtn');
-  const errEl   = document.getElementById('formErr');
+  hideFormErr();
+
+  const name  = document.getElementById('f-name').value.trim();
+  const cat   = document.getElementById('f-cat').value.trim();
+  const stock = parseInt(document.getElementById('f-stock').value) || 0;
+
+  if (!name) { showFormErr('Product name is required'); document.getElementById('f-name').focus(); return; }
+  if (!cat)  { showFormErr('Category is required'); document.getElementById('f-cat').focus(); return; }
+  if (stock < 0) { showFormErr('Stock cannot be negative'); return; }
+
   const data = {
-    name:   document.getElementById('f-name').value.trim(),
-    cat:    document.getElementById('f-cat').value.trim(),
-    tag:    document.getElementById('f-tag').value.trim(),
-    stock:  parseInt(document.getElementById('f-stock').value) || 0,
-    desc:   document.getElementById('f-desc').value.trim(),
-    img:    currentImgUrl,
+    name, cat,
+    tag:   document.getElementById('f-tag').value.trim(),
+    stock,
+    desc:  document.getElementById('f-desc').value.trim(),
+    img:   currentImgUrl,
     active: document.getElementById('f-active').value === 'true',
-    price:  0,
+    price: 0,
   };
-  if (!data.name) { errEl.textContent = 'Product name is required'; errEl.style.display='block'; return; }
-  if (!data.cat)  { errEl.textContent = 'Category is required';     errEl.style.display='block'; return; }
-  saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; errEl.style.display = 'none';
+
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
   try {
     const url    = id ? `${api()}/api/products/${id}` : `${api()}/api/products`;
     const method = id ? 'PUT' : 'POST';
-    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     const json = await r.json();
-    if (!r.ok) { errEl.textContent = json.error || 'Save failed'; errEl.style.display='block'; return; }
-    closeModal(); toast(id ? 'Product updated' : 'Product created', 'success'); loadAll();
+    if (!r.ok) { showFormErr(json.error || `Server error (HTTP ${r.status})`); return; }
+    closeModal();
+    toastMsg(id ? 'Product updated' : 'Product created', 'success');
+    loadAll();
   } catch (e) {
-    errEl.textContent = 'Network error: '+e.message; errEl.style.display='block';
+    showFormErr('Network error: ' + e.message);
   } finally {
     saveBtn.disabled = false; saveBtn.textContent = 'Save Product';
   }
 }
 
-/* ── Image tabs ── */
+function showFormErr(msg) {
+  document.getElementById('formErrMsg').textContent = msg;
+  document.getElementById('formErr').style.display = 'flex';
+}
+function hideFormErr() { document.getElementById('formErr').style.display = 'none'; }
+
+/* ══════════════════════════════
+   BULK ADD MODAL
+══════════════════════════════ */
+let bulkAddMode = 'form'; // 'form' | 'csv'
+
+function openBulkAdd() {
+  bulkAddMode = 'form'; csvProducts = [];
+  switchBulkTab('form');
+  document.getElementById('productRows').innerHTML = '';
+  document.getElementById('csvPreview').innerHTML = '';
+  document.getElementById('csvInput').value = '';
+  document.getElementById('bulkProgressWrap').style.display = 'none';
+  document.getElementById('bulkResultList').innerHTML = '';
+  document.getElementById('bulkSummary').textContent = '';
+  hideBulkErr();
+  document.getElementById('bulkSaveBtn').disabled = false;
+  document.getElementById('bulkSaveBtn').textContent = 'Submit All';
+  addProductRow(); // Start with one empty row
+  document.getElementById('bulkModal').style.display = 'flex';
+}
+
+function closeBulkAdd() { document.getElementById('bulkModal').style.display = 'none'; }
+
+function switchBulkTab(tab) {
+  bulkAddMode = tab;
+  document.getElementById('baTabForm').classList.toggle('active', tab === 'form');
+  document.getElementById('baTabCsv').classList.toggle('active', tab === 'csv');
+  document.getElementById('baPanelForm').style.display = tab === 'form' ? '' : 'none';
+  document.getElementById('baPanelCsv').style.display = tab === 'csv' ? '' : 'none';
+  hideBulkErr();
+}
+
+let rowCounter = 0;
+function addProductRow(prefill = {}) {
+  rowCounter++;
+  const num = rowCounter;
+  const catOpts = cats.map(c => `<option value="${escAttr(c.name)}">`).join('');
+  const div = document.createElement('div');
+  div.className = 'product-row';
+  div.id = 'prow-' + num;
+  div.innerHTML = `
+    <span class="product-row-num">#${num}</span>
+    <button class="remove-row" onclick="removeProductRow(${num})" title="Remove">×</button>
+    <div class="frow" style="margin-top:18px">
+      <div class="fgroup" style="margin-bottom:8px">
+        <label class="flabel">Name *</label>
+        <input class="finput" data-field="name" placeholder="Product name" value="${escAttr(prefill.name||'')}" list="catListForm" />
+      </div>
+      <div class="fgroup" style="margin-bottom:8px">
+        <label class="flabel">Category *</label>
+        <input class="finput" data-field="cat" placeholder="Category" value="${escAttr(prefill.cat||'')}" list="catListForm2-${num}" />
+        <datalist id="catListForm2-${num}">${catOpts}</datalist>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fgroup" style="margin-bottom:8px">
+        <label class="flabel">Tag</label>
+        <input class="finput" data-field="tag" placeholder="e.g. Bestseller" value="${escAttr(prefill.tag||'')}" />
+      </div>
+      <div class="fgroup" style="margin-bottom:8px">
+        <label class="flabel">Stock</label>
+        <input class="finput" data-field="stock" type="number" min="0" placeholder="0" value="${prefill.stock ?? 0}" />
+      </div>
+    </div>
+    <div class="fgroup" style="margin-bottom:0">
+      <label class="flabel">Image URL</label>
+      <input class="finput" data-field="img" placeholder="https://…" value="${escAttr(prefill.img||'')}" />
+    </div>`;
+  document.getElementById('productRows').appendChild(div);
+  updateBulkRowNums();
+}
+
+function removeProductRow(num) {
+  const el = document.getElementById('prow-'+num);
+  if (el) el.remove();
+  updateBulkRowNums();
+}
+
+function updateBulkRowNums() {
+  document.querySelectorAll('.product-row').forEach((row, i) => {
+    const span = row.querySelector('.product-row-num');
+    if (span) span.textContent = '#' + (i+1);
+  });
+}
+
+function collectFormRows() {
+  const rows = document.querySelectorAll('.product-row');
+  const products = [];
+  rows.forEach(row => {
+    const get = field => row.querySelector(`[data-field="${field}"]`)?.value?.trim() || '';
+    products.push({
+      name:   get('name'),
+      cat:    get('cat'),
+      tag:    get('tag'),
+      stock:  parseInt(row.querySelector('[data-field="stock"]')?.value) || 0,
+      img:    get('img'),
+      active: true,
+      price:  0,
+      desc:   ''
+    });
+  });
+  return products;
+}
+
+async function saveBulkProducts() {
+  hideBulkErr();
+  let products = [];
+
+  if (bulkAddMode === 'form') {
+    products = collectFormRows();
+    const invalid = products.filter(p => !p.name || !p.cat);
+    if (invalid.length) {
+      showBulkErr(`${invalid.length} row(s) are missing Name or Category`); return;
+    }
+    if (!products.length) { showBulkErr('Add at least one product'); return; }
+  } else {
+    if (!csvProducts.length) { showBulkErr('Upload a CSV file first'); return; }
+    products = csvProducts;
+  }
+
+  document.getElementById('bulkSaveBtn').disabled = true;
+  document.getElementById('bulkSaveBtn').textContent = 'Submitting…';
+  document.getElementById('bulkProgressWrap').style.display = 'block';
+  document.getElementById('bulkResultList').innerHTML = '';
+  document.getElementById('bulkProgressBar').style.width = '0%';
+  document.getElementById('bulkProgressLabel').textContent = `Submitting 0 / ${products.length}…`;
+
+  // Try batch endpoint first
+  let usedBatch = false;
+  try {
+    const r = await fetch(api() + '/api/products/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products })
+    });
+    if (r.ok) {
+      const { data } = await r.json();
+      usedBatch = true;
+      document.getElementById('bulkProgressBar').style.width = '100%';
+      document.getElementById('bulkProgressLabel').textContent = `Done — ${data.created} created`;
+      document.getElementById('bulkSummary').textContent = `✓ ${data.created} created`;
+      toastMsg(`${data.created} products added`, 'success');
+      setTimeout(() => { closeBulkAdd(); loadAll(); }, 1200);
+    }
+  } catch {}
+
+  if (!usedBatch) {
+    // Sequential fallback with progress
+    let ok = 0, fail = 0;
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      const pct = Math.round(((i) / products.length) * 100);
+      document.getElementById('bulkProgressBar').style.width = pct + '%';
+      document.getElementById('bulkProgressLabel').textContent = `Submitting ${i+1} / ${products.length}…`;
+      const item = document.createElement('div');
+      item.className = 'bulk-result-item';
+      try {
+        const r = await fetch(api() + '/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p)
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error || 'HTTP ' + r.status);
+        }
+        ok++;
+        item.classList.add('ok');
+        item.innerHTML = `<span>✓</span><span class="ri-name">${escHtml(p.name)}</span><span class="ri-status">Created</span>`;
+      } catch (e) {
+        fail++;
+        item.classList.add('err');
+        item.innerHTML = `<span>✗</span><span class="ri-name">${escHtml(p.name)}</span><span class="ri-status">${escHtml(e.message)}</span>`;
+      }
+      document.getElementById('bulkResultList').appendChild(item);
+      item.scrollIntoView({ block: 'nearest' });
+    }
+    document.getElementById('bulkProgressBar').style.width = '100%';
+    document.getElementById('bulkProgressLabel').textContent = `Complete — ${ok} created, ${fail} failed`;
+    document.getElementById('bulkSummary').textContent = `${ok} created${fail ? ', ' + fail + ' failed' : ''}`;
+    if (ok > 0) toastMsg(`${ok} product(s) added`, 'success');
+    if (fail > 0) toastMsg(`${fail} product(s) failed`, 'error');
+    loadAll();
+  }
+
+  document.getElementById('bulkSaveBtn').disabled = false;
+  document.getElementById('bulkSaveBtn').textContent = 'Submit All';
+}
+
+/* ── CSV ── */
+function handleCsvSelect(e) { parseCsv(e.target.files[0]); }
+function handleCsvDrop(e) {
+  e.preventDefault();
+  document.getElementById('csvDrop').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) parseCsv(f);
+}
+
+function parseCsv(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) { showBulkErr('CSV file is empty'); return; }
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
+    const nameIdx  = headers.indexOf('name');
+    const catIdx   = headers.indexOf('cat');
+    if (nameIdx < 0 || catIdx < 0) { showBulkErr('CSV must have "name" and "cat" columns'); return; }
+    const tagIdx   = headers.indexOf('tag');
+    const stockIdx = headers.indexOf('stock');
+    const descIdx  = headers.indexOf('desc');
+    const imgIdx   = headers.indexOf('img');
+    const activeIdx = headers.indexOf('active');
+    csvProducts = [];
+    const errors = [];
+    for (let i = 1; i < lines.length; i++) {
+      const vals = parseCsvLine(lines[i]);
+      const name = vals[nameIdx]?.trim();
+      const cat  = vals[catIdx]?.trim();
+      if (!name || !cat) { errors.push(`Row ${i+1}: missing name or category`); continue; }
+      csvProducts.push({
+        name, cat,
+        tag:    tagIdx >= 0 ? (vals[tagIdx]||'').trim() : '',
+        stock:  stockIdx >= 0 ? parseInt(vals[stockIdx]) || 0 : 0,
+        desc:   descIdx >= 0 ? (vals[descIdx]||'').trim() : '',
+        img:    imgIdx >= 0 ? (vals[imgIdx]||'').trim() : '',
+        active: activeIdx >= 0 ? (vals[activeIdx]||'true').toLowerCase() !== 'false' : true,
+        price: 0
+      });
+    }
+    const preview = document.getElementById('csvPreview');
+    preview.innerHTML = `<div style="color:${errors.length?'#ffaa44':'#90ee90'};margin-bottom:4px">
+      ${csvProducts.length} valid product(s) parsed${errors.length ? `, ${errors.length} skipped` : ''}
+    </div>` + errors.map(e => `<div style="font-size:9px;color:#ff8888">${escHtml(e)}</div>`).join('');
+    document.getElementById('bulkSummary').textContent = `${csvProducts.length} ready to import`;
+    hideBulkErr();
+  };
+  reader.readAsText(file);
+}
+
+function parseCsvLine(line) {
+  const result = [], re = /("([^"]*(?:""[^"]*)*)"|([^,]*))(?:,|$)/g;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    result.push((m[2] !== undefined ? m[2].replace(/""/g,'"') : m[3]) || '');
+    if (m[0] === '') break;
+  }
+  return result;
+}
+
+function downloadCsvTemplate(e) {
+  e.preventDefault();
+  const csv = 'name,cat,tag,stock,desc,img,active\nExample Product,Hair Food,Bestseller,50,A great product,,true';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'joi-products-template.csv';
+  a.click();
+}
+
+function showBulkErr(msg) {
+  document.getElementById('bulkFormErrMsg').textContent = msg;
+  document.getElementById('bulkFormErr').style.display = 'flex';
+}
+function hideBulkErr() { document.getElementById('bulkFormErr').style.display = 'none'; }
+
+/* ══════════════════════════════
+   IMAGE (single modal)
+══════════════════════════════ */
 function switchTab(tab) {
   document.getElementById('tabUpload').classList.toggle('active', tab==='upload');
   document.getElementById('tabUrl').classList.toggle('active', tab==='url');
@@ -720,7 +1302,7 @@ function showPreview(url) {
   const wrap = document.getElementById('previewWrap');
   const img  = document.getElementById('imgPreview');
   img.src = url;
-  img.onerror = () => { wrap.style.display='none'; };
+  img.onerror = () => { wrap.style.display = 'none'; currentImgUrl = ''; };
   wrap.style.display = 'block';
 }
 
@@ -734,79 +1316,79 @@ function clearImage(resetUrl=true) {
   document.getElementById('uploadBar').style.width = '0%';
 }
 
-/* ── Backend Upload (via Flask API) with Debug Logging ── */
 async function uploadToCloudinary(file) {
+  if (file.size > 10 * 1024 * 1024) { toastMsg('File too large (max 10MB)', 'error'); return; }
+  if (!file.type.startsWith('image/')) { toastMsg('Only image files allowed', 'error'); return; }
   const status = document.getElementById('uploadStatus');
   const progress = document.getElementById('uploadProgress');
   const bar = document.getElementById('uploadBar');
-
-  status.textContent = 'Uploading…';
-  progress.style.display = 'block';
-  bar.style.width = '20%';
-
+  status.textContent = 'Uploading…'; status.style.color = 'rgba(255,215,0,0.6)';
+  progress.style.display = 'block'; bar.style.width = '20%';
   const fd = new FormData();
   fd.append('file', file);
-
   try {
     bar.style.width = '50%';
-    console.log('Uploading to:', api() + '/api/upload'); // DEBUG
-    console.log('File:', file.name, file.size, file.type); // DEBUG
-    
-    const r = await fetch(api() + '/api/upload', {
-      method: 'POST',
-      body: fd
-    });
-    
-    console.log('Response status:', r.status); // DEBUG
-    
+    const r = await fetch(api() + '/api/upload', { method: 'POST', body: fd });
     bar.style.width = '90%';
     if (!r.ok) {
-      const text = await r.text();
-      console.error('Error response:', text); // DEBUG
-      throw new Error(`Upload failed (HTTP ${r.status}): ${text}`);
+      let msg = 'HTTP ' + r.status;
+      try { const t = await r.text(); msg += ': ' + t.slice(0, 120); } catch {}
+      throw new Error(msg);
     }
-    
     const json = await r.json();
-    console.log('Response:', json); // DEBUG
-    
     if (!json.success) throw new Error(json.error || 'Upload failed');
     bar.style.width = '100%';
     currentImgUrl = json.data.url;
     showPreview(json.data.url);
-    status.textContent = '✓ Uploaded successfully';
-    status.style.color = '#90ee90';
+    status.textContent = '✓ Uploaded successfully'; status.style.color = '#90ee90';
     setTimeout(() => { progress.style.display='none'; bar.style.width='0%'; }, 1500);
   } catch (e) {
-    console.error('Upload error:', e); // DEBUG
-    status.textContent = '✗ Upload failed — ' + e.message;
-    status.style.color = '#ff8888';
+    status.textContent = '✗ ' + e.message; status.style.color = '#ff8888';
     progress.style.display = 'none';
+    toastMsg('Upload failed: ' + e.message, 'error');
   }
 }
-function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) uploadToCloudinary(file);
-}
 
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) uploadToCloudinary(f); }
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('dropZone').classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) uploadToCloudinary(file);
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) uploadToCloudinary(f);
+  else if (f) toastMsg('Please drop an image file', 'error');
 }
 
-/* ── Toast ── */
-let toastTimer;
-function toast(msg, type) {
-  clearTimeout(toastTimer);
-  const ex = document.getElementById('_toast'); if (ex) ex.remove();
+/* ══════════════════════════════
+   TOAST (stacked, closeable)
+══════════════════════════════ */
+function toastMsg(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
   const t = document.createElement('div');
-  t.id = '_toast'; t.className = 'toast ' + type; t.textContent = msg;
-  document.body.appendChild(t);
-  toastTimer = setTimeout(() => t.remove(), 3200);
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span class="toast-msg">${escHtml(msg)}</span><button class="toast-close" onclick="this.parentElement.remove()">×</button>`;
+  container.appendChild(t);
+  setTimeout(() => {
+    t.style.animation = 'toastOut .3s ease forwards';
+    setTimeout(() => t.remove(), 300);
+  }, 3500);
 }
 
-/* ── Boot ── */
+/* ══════════════════════════════
+   UTILS
+══════════════════════════════ */
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function escAttr(s) { return escHtml(s); }
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeBulkAdd(); }
+});
+
+/* ══════════════════════════════
+   BOOT
+══════════════════════════════ */
 initApiBar(); loadAll();
 </script>
 </body>
