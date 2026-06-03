@@ -2,9 +2,21 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import json, os, uuid
 from datetime import datetime
-
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
+load_dotenv()
 app = Flask(__name__, static_folder='static')
 CORS(app)
+
+# ── Cloudinary Configuration ─────────────────────────────────────
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # ── Storage path ─────────────────────────────────────────────────
 # On Render: set DATA_DIR=/data  (mount your disk at /data)
@@ -37,7 +49,7 @@ def save_products(products):
 
 # ── Validation ───────────────────────────────────────────────────
 
-REQUIRED_FIELDS = ['name', 'cat', 'price']
+REQUIRED_FIELDS = ['name', 'cat']
 
 def validate_product(data, require_all=True):
     errors = []
@@ -87,6 +99,23 @@ def err(message, status=400):
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
+
+@app.route('/api/upload', methods=['POST'])
+def upload_image():
+    if 'file' not in request.files:
+        return err('No file provided')
+    file = request.files['file']
+    if not file.filename:
+        return err('Empty filename')
+    try:
+        result = cloudinary.uploader.upload(
+            file,
+            folder='joi-products',
+            transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'auto'}]
+        )
+        return ok({'url': result['secure_url'], 'public_id': result['public_id']})
+    except Exception as e:
+        return err(f'Upload failed: {str(e)}')
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -208,8 +237,8 @@ def bulk_action():
     data = request.json or {}
     action = data.get('action')
     ids = data.get('ids', [])
-    if action not in ('delete', 'activate', 'deactivate'):
-        return err('action must be "delete", "activate", or "deactivate"')
+    if action not in ('delete', 'activate', 'deactivate', 'set_category'):
+        return err('Invalid action')
     if not ids or not isinstance(ids, list):
         return err('"ids" must be a non-empty list')
     products = load_products()
@@ -218,6 +247,15 @@ def bulk_action():
         before = len(products)
         products = [p for p in products if p['id'] not in ids]
         affected = before - len(products)
+    elif action == 'set_category':
+        new_cat = str(data.get('category', '')).strip()
+        if not new_cat:
+            return err('"category" is required for set_category action')
+        for i, p in enumerate(products):
+            if p['id'] in ids:
+                products[i]['cat'] = new_cat
+                products[i]['updated_at'] = datetime.utcnow().isoformat()
+                affected += 1
     else:
         active_val = action == 'activate'
         for i, p in enumerate(products):

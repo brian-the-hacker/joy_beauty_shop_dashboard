@@ -120,5 +120,18 @@
     "stock": 30,
     "created_at": "2026-05-26T20:37:56.397668",
     "updated_at": "2026-05-26T20:37:56.397681"
+  },
+  {
+    "id": "0dca000d",
+    "name": "gr",
+    "cat": "Body",
+    "price": 0.0,
+    "tag": "yyyy",
+    "desc": "",
+    "img": "https://res.cloudinary.com/dpyjgcgoa/image/upload/v1780512032/joi-products/ub8nffpvxbhhdbqwviqe.jpg",
+    "active": true,
+    "stock": 40,
+    "created_at": "2026-06-03T18:46:50.918891",
+    "updated_at": "2026-06-03T18:46:50.918936"
   }
 ]
