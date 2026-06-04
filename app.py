@@ -1,16 +1,18 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-import json, os, uuid
+import os, uuid
 from datetime import datetime
 import cloudinary
 import cloudinary.uploader
+import pymysql
+import pymysql.cursors
 from dotenv import load_dotenv
 load_dotenv()
+
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
 # ── Cloudinary Configuration ─────────────────────────────────────
-
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
     api_key=os.environ.get('CLOUDINARY_API_KEY'),
@@ -18,54 +20,120 @@ cloudinary.config(
     secure=True
 )
 
-# ── Storage path ─────────────────────────────────────────────────
-# On Render: set DATA_DIR=/data  (mount your disk at /data)
-# Locally:   defaults to the project folder  (./products.json)
-DATA_DIR  = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
-DATA_FILE = os.path.join(DATA_DIR, 'products.json')
+# ── MySQL Configuration ──────────────────────────────────────────
+#
+#  .env for Render (use PlanetScale / Railway free MySQL):
+#    DB_HOST=your-render-mysql-host
+#    DB_PORT=3306
+#    DB_USER=your_user
+#    DB_PASSWORD=your_password
+#    DB_NAME=joi_products
+#
+#  .env for HostPinnacle (cPanel MySQL):
+#    DB_HOST=localhost
+#    DB_PORT=3306
+#    DB_USER=cpanel_user
+#    DB_PASSWORD=cpanel_password
+#    DB_NAME=cpanel_dbname
+#
+#  Only the .env values change between environments.
+#  All code stays exactly the same.
 
-DEFAULT_PRODUCTS = [
-    {"id": "1", "name": "Velvet Noir Serum", "cat": "Serums", "price": 148, "tag": "Bestseller", "desc": "A midnight-dark elixir that revives and illuminates dull skin overnight.", "img": "https://images.pexels.com/photos/5632386/pexels-photo-5632386.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 42, "created_at": "2024-01-01T00:00:00"},
-    {"id": "2", "name": "Gold Radiance Cream", "cat": "Moisturizers", "price": 195, "tag": "New", "desc": "Infused with 24k gold particles for a luminous, sculpted complexion.", "img": "https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 28, "created_at": "2024-01-02T00:00:00"},
-    {"id": "3", "name": "Obsidian Eye Elixir", "cat": "Eye Care", "price": 112, "tag": "Award Winner", "desc": "Deep-repairing formula that erases dark circles and fine lines.", "img": "https://images.pexels.com/photos/4762440/pexels-photo-4762440.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 15, "created_at": "2024-01-03T00:00:00"},
-    {"id": "4", "name": "Charles Lip Nectar", "cat": "Lip Care", "price": 68, "tag": "Fan Favorite", "desc": "Plumping lip treatment with a mirror-like finish and rich hydration.", "img": "https://images.pexels.com/photos/3997989/pexels-photo-3997989.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 60, "created_at": "2024-01-04T00:00:00"},
-    {"id": "5", "name": "Navy Mist Toner", "cat": "Toners", "price": 85, "tag": "Vegan", "desc": "Balancing botanical mist that preps skin for effortless absorption.", "img": "https://images.pexels.com/photos/6424249/pexels-photo-6424249.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 33, "created_at": "2024-01-05T00:00:00"},
-    {"id": "6", "name": "Imperial Body Oil", "cat": "Body", "price": 135, "tag": "Luxury", "desc": "A silky dry oil blend of rose hip, argan and jasmine for goddess skin.", "img": "https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=600", "active": True, "stock": 20, "created_at": "2024-01-06T00:00:00"},
-]
+DB_CONFIG = {
+    'host':     os.environ.get('DB_HOST', 'localhost'),
+    'port':     int(os.environ.get('DB_PORT', 3306)),
+    'user':     os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'db':       os.environ.get('DB_NAME', 'joi_products'),
+    'charset':  'utf8mb4',
+    'cursorclass': pymysql.cursors.DictCursor,
+    'autocommit': True,
+}
 
-# ── Data helpers ─────────────────────────────────────────────────
+def get_db():
+    """Open a new database connection."""
+    return pymysql.connect(**DB_CONFIG)
 
-def load_products():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE) as f:
-            return json.load(f)
-    save_products(DEFAULT_PRODUCTS)
-    return DEFAULT_PRODUCTS
+def init_db():
+    """Create the products table if it doesn't exist, and seed default data."""
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS products (
+                    id          VARCHAR(8)    NOT NULL PRIMARY KEY,
+                    name        VARCHAR(120)  NOT NULL,
+                    cat         VARCHAR(80)   NOT NULL,
+                    price       DECIMAL(10,2) NOT NULL DEFAULT 0,
+                    tag         VARCHAR(60)   DEFAULT '',
+                    description TEXT          DEFAULT '',
+                    img         TEXT          DEFAULT '',
+                    active      TINYINT(1)    NOT NULL DEFAULT 1,
+                    stock       INT           NOT NULL DEFAULT 0,
+                    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """)
+            # Seed only if table is empty
+            cur.execute("SELECT COUNT(*) AS cnt FROM products")
+            if cur.fetchone()['cnt'] == 0:
+                defaults = [
+                    ('p0000001', 'Velvet Noir Serum',    'Serums',      148, 'Bestseller', 'A midnight-dark elixir that revives and illuminates dull skin overnight.',                'https://images.pexels.com/photos/5632386/pexels-photo-5632386.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 42),
+                    ('p0000002', 'Gold Radiance Cream',  'Moisturizers',195, 'New',        'Infused with 24k gold particles for a luminous, sculpted complexion.',                  'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 28),
+                    ('p0000003', 'Obsidian Eye Elixir',  'Eye Care',    112, 'Award Winner','Deep-repairing formula that erases dark circles and fine lines.',                       'https://images.pexels.com/photos/4762440/pexels-photo-4762440.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 15),
+                    ('p0000004', 'Charles Lip Nectar',   'Lip Care',     68, 'Fan Favorite','Plumping lip treatment with a mirror-like finish and rich hydration.',                  'https://images.pexels.com/photos/3997989/pexels-photo-3997989.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 60),
+                    ('p0000005', 'Navy Mist Toner',      'Toners',       85, 'Vegan',      'Balancing botanical mist that preps skin for effortless absorption.',                   'https://images.pexels.com/photos/6424249/pexels-photo-6424249.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 33),
+                    ('p0000006', 'Imperial Body Oil',    'Body',        135, 'Luxury',     'A silky dry oil blend of rose hip, argan and jasmine for goddess skin.',                'https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 20),
+                ]
+                cur.executemany("""
+                    INSERT INTO products (id,name,cat,price,tag,description,img,active,stock)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, defaults)
+    finally:
+        conn.close()
 
-def save_products(products):
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    with open(DATA_FILE, 'w') as f:
-        json.dump(products, f, indent=2)
+# ── Helpers ──────────────────────────────────────────────────────
+
+def row_to_dict(row):
+    """Normalise a DB row to the same shape the old JSON used."""
+    return {
+        'id':         row['id'],
+        'name':       row['name'],
+        'cat':        row['cat'],
+        'price':      float(row['price']),
+        'tag':        row['tag'] or '',
+        'desc':       row['description'] or '',   # keep key as 'desc' for frontend compatibility
+        'img':        row['img'] or '',
+        'active':     bool(row['active']),
+        'stock':      row['stock'],
+        'created_at': row['created_at'].isoformat() if hasattr(row['created_at'], 'isoformat') else str(row['created_at']),
+        'updated_at': row['updated_at'].isoformat() if hasattr(row['updated_at'], 'isoformat') else str(row['updated_at']),
+    }
+
+def ok(data, status=200):
+    return jsonify({'success': True, 'data': data}), status
+
+def err(message, status=400):
+    return jsonify({'success': False, 'error': message}), status
 
 # ── Validation ───────────────────────────────────────────────────
-
-REQUIRED_FIELDS = ['name', 'cat']
 
 def validate_product(data, require_all=True):
     errors = []
     if require_all:
-        for field in REQUIRED_FIELDS:
+        for field in ['name', 'cat']:
             if not data.get(field):
                 errors.append(f'"{field}" is required')
     if 'name' in data:
         name = str(data['name']).strip()
-        if len(name) < 2:  errors.append('"name" must be at least 2 characters')
+        if len(name) < 2:   errors.append('"name" must be at least 2 characters')
         if len(name) > 120: errors.append('"name" must be under 120 characters')
         data['name'] = name
     if 'price' in data:
         try:
             price = float(data['price'])
-            if price < 0: errors.append('"price" cannot be negative')
+            if price < 0:       errors.append('"price" cannot be negative')
             if price > 100_000: errors.append('"price" seems unrealistically high')
             data['price'] = round(price, 2)
         except (TypeError, ValueError):
@@ -85,14 +153,6 @@ def validate_product(data, require_all=True):
     if errors:
         return None, '; '.join(errors)
     return data, None
-
-# ── Response helpers ─────────────────────────────────────────────
-
-def ok(data, status=200):
-    return jsonify({'success': True, 'data': data}), status
-
-def err(message, status=400):
-    return jsonify({'success': False, 'error': message}), status
 
 # ── Routes ───────────────────────────────────────────────────────
 
@@ -119,54 +179,83 @@ def upload_image():
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
-    products = load_products()
-    active_param = request.args.get('active')
-    if active_param is not None:
-        want_active = active_param.lower() == 'true'
-        products = [p for p in products if p.get('active', True) == want_active]
-    cat = request.args.get('cat', '').strip()
-    if cat:
-        products = [p for p in products if p.get('cat', '').lower() == cat.lower()]
+    conn = get_db()
     try:
-        min_price = float(request.args.get('min_price', 0))
-        max_price = float(request.args.get('max_price', float('inf')))
-        products = [p for p in products if min_price <= p.get('price', 0) <= max_price]
-    except ValueError:
-        return err('min_price and max_price must be numbers')
-    q = request.args.get('q', '').strip().lower()
-    if q:
-        products = [p for p in products if any(q in str(p.get(f, '')).lower() for f in ['name', 'cat', 'desc', 'tag'])]
-    sort_field = request.args.get('sort', 'created_at')
-    sort_order = request.args.get('order', 'asc').lower()
-    if sort_field in {'price', 'name', 'created_at', 'stock'}:
-        reverse = sort_order == 'desc'
-        products = sorted(
-            products,
-            key=lambda p: (p.get(sort_field) or 0) if sort_field in {'price', 'stock'} else str(p.get(sort_field, '')).lower(),
-            reverse=reverse
-        )
-    total = len(products)
-    try:
-        page  = max(1, int(request.args.get('page', 1)))
-        limit = min(100, max(1, int(request.args.get('limit', total))))
-    except ValueError:
-        return err('page and limit must be integers')
-    start = (page - 1) * limit
-    paginated = products[start:start + limit]
-    return jsonify({
-        'success': True, 'data': paginated,
-        'meta': {
-            'total': total, 'page': page, 'limit': limit,
-            'pages': max(1, -(-total // limit)),
-            'has_next': start + limit < total, 'has_prev': page > 1,
-        }
-    })
+        with conn.cursor() as cur:
+            clauses, params = [], []
+
+            active_param = request.args.get('active')
+            if active_param is not None:
+                clauses.append('active = %s')
+                params.append(1 if active_param.lower() == 'true' else 0)
+
+            cat = request.args.get('cat', '').strip()
+            if cat:
+                clauses.append('cat = %s')
+                params.append(cat)
+
+            try:
+                min_price = float(request.args.get('min_price', 0))
+                max_price = float(request.args.get('max_price', 9999999))
+                clauses.append('price BETWEEN %s AND %s')
+                params += [min_price, max_price]
+            except ValueError:
+                return err('min_price and max_price must be numbers')
+
+            q = request.args.get('q', '').strip()
+            if q:
+                clauses.append('(name LIKE %s OR cat LIKE %s OR description LIKE %s OR tag LIKE %s)')
+                like = f'%{q}%'
+                params += [like, like, like, like]
+
+            where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+
+            # Count total
+            cur.execute(f'SELECT COUNT(*) AS cnt FROM products {where}', params)
+            total = cur.fetchone()['cnt']
+
+            # Sort
+            sort_map = {'price':'price','name':'name','created_at':'created_at','stock':'stock'}
+            sf  = sort_map.get(request.args.get('sort', 'created_at'), 'created_at')
+            so  = 'DESC' if request.args.get('order', 'asc').lower() == 'desc' else 'ASC'
+
+            # Pagination
+            try:
+                page  = max(1, int(request.args.get('page', 1)))
+                limit = min(100, max(1, int(request.args.get('limit', total or 1))))
+            except ValueError:
+                return err('page and limit must be integers')
+
+            offset = (page - 1) * limit
+            cur.execute(
+                f'SELECT * FROM products {where} ORDER BY {sf} {so} LIMIT %s OFFSET %s',
+                params + [limit, offset]
+            )
+            rows = [row_to_dict(r) for r in cur.fetchall()]
+            pages = max(1, -(-total // limit)) if limit else 1
+
+        return jsonify({
+            'success': True, 'data': rows,
+            'meta': {
+                'total': total, 'page': page, 'limit': limit,
+                'pages': pages,
+                'has_next': offset + limit < total,
+                'has_prev': page > 1,
+            }
+        })
+    finally:
+        conn.close()
 
 @app.route('/api/products/<product_id>', methods=['GET'])
 def get_product(product_id):
-    products = load_products()
-    p = next((p for p in products if p['id'] == product_id), None)
-    return ok(p) if p else err('Product not found', 404)
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            row = cur.fetchone()
+        return ok(row_to_dict(row)) if row else err('Product not found', 404)
+    finally:
+        conn.close()
 
 @app.route('/api/products', methods=['POST'])
 def create_product():
@@ -174,25 +263,34 @@ def create_product():
     if not data: return err('Request body must be JSON')
     data, error = validate_product(data, require_all=True)
     if error: return err(error)
-    products = load_products()
-    if any(p['name'].lower() == data['name'].lower() for p in products):
-        return err(f'A product named "{data["name"]}" already exists', 409)
-    new_product = {
-        'id': str(uuid.uuid4())[:8],
-        'name': data.get('name', ''),
-        'cat': str(data.get('cat', '')).strip(),
-        'price': data.get('price', 0),
-        'tag': str(data.get('tag', '')).strip(),
-        'desc': str(data.get('desc', '')).strip(),
-        'img': data.get('img', ''),
-        'active': bool(data.get('active', True)),
-        'stock': int(data.get('stock', 0)),
-        'created_at': datetime.utcnow().isoformat(),
-        'updated_at': datetime.utcnow().isoformat(),
-    }
-    products.append(new_product)
-    save_products(products)
-    return ok(new_product, 201)
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id FROM products WHERE LOWER(name) = LOWER(%s)', (data['name'],))
+            if cur.fetchone():
+                return err(f'A product named "{data["name"]}" already exists', 409)
+
+            new_id = str(uuid.uuid4())[:8]
+            cur.execute("""
+                INSERT INTO products (id, name, cat, price, tag, description, img, active, stock)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                new_id,
+                data.get('name', ''),
+                str(data.get('cat', '')).strip(),
+                data.get('price', 0),
+                str(data.get('tag', '')).strip(),
+                str(data.get('desc', '')).strip(),
+                data.get('img', ''),
+                bool(data.get('active', True)),
+                int(data.get('stock', 0)),
+            ))
+            cur.execute('SELECT * FROM products WHERE id = %s', (new_id,))
+            new_product = row_to_dict(cur.fetchone())
+        return ok(new_product, 201)
+    finally:
+        conn.close()
 
 @app.route('/api/products/<product_id>', methods=['PUT'])
 def update_product(product_id):
@@ -200,108 +298,211 @@ def update_product(product_id):
     if not data: return err('Request body must be JSON')
     data, error = validate_product(data, require_all=False)
     if error: return err(error)
-    products = load_products()
-    for i, p in enumerate(products):
-        if p['id'] == product_id:
-            new_name = data.get('name', p['name'])
-            if any(x['name'].lower() == new_name.lower() and x['id'] != product_id for x in products):
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            existing = cur.fetchone()
+            if not existing:
+                return err('Product not found', 404)
+
+            new_name = data.get('name', existing['name'])
+            cur.execute(
+                'SELECT id FROM products WHERE LOWER(name) = LOWER(%s) AND id != %s',
+                (new_name, product_id)
+            )
+            if cur.fetchone():
                 return err(f'Another product named "{new_name}" already exists', 409)
-            products[i] = {**p, **{k: v for k, v in data.items() if k not in ('id', 'created_at')}, 'id': product_id, 'updated_at': datetime.utcnow().isoformat()}
-            save_products(products)
-            return ok(products[i])
-    return err('Product not found', 404)
+
+            # Build dynamic SET clause from whatever was sent
+            allowed = {'name','cat','price','tag','desc','img','active','stock'}
+            sets, vals = [], []
+            for key, col in [('name','name'),('cat','cat'),('price','price'),('tag','tag'),
+                              ('desc','description'),('img','img'),('active','active'),('stock','stock')]:
+                if key in data:
+                    sets.append(f'{col} = %s')
+                    val = data[key]
+                    if key == 'active': val = int(bool(val))
+                    vals.append(val)
+
+            if sets:
+                vals.append(product_id)
+                cur.execute(f'UPDATE products SET {", ".join(sets)} WHERE id = %s', vals)
+
+            cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            return ok(row_to_dict(cur.fetchone()))
+    finally:
+        conn.close()
 
 @app.route('/api/products/<product_id>', methods=['DELETE'])
 def delete_product(product_id):
-    products = load_products()
-    original_len = len(products)
-    products = [p for p in products if p['id'] != product_id]
-    if len(products) == original_len:
-        return err('Product not found', 404)
-    save_products(products)
-    return ok({'deleted_id': product_id})
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id FROM products WHERE id = %s', (product_id,))
+            if not cur.fetchone():
+                return err('Product not found', 404)
+            cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
+        return ok({'deleted_id': product_id})
+    finally:
+        conn.close()
 
 @app.route('/api/products/<product_id>/toggle', methods=['POST'])
 def toggle_product(product_id):
-    products = load_products()
-    for i, p in enumerate(products):
-        if p['id'] == product_id:
-            products[i]['active'] = not p.get('active', True)
-            products[i]['updated_at'] = datetime.utcnow().isoformat()
-            save_products(products)
-            return ok(products[i])
-    return err('Product not found', 404)
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            row = cur.fetchone()
+            if not row:
+                return err('Product not found', 404)
+            new_active = 0 if row['active'] else 1
+            cur.execute('UPDATE products SET active = %s WHERE id = %s', (new_active, product_id))
+            cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            return ok(row_to_dict(cur.fetchone()))
+    finally:
+        conn.close()
 
 @app.route('/api/products/bulk', methods=['POST'])
 def bulk_action():
     data = request.json or {}
     action = data.get('action')
-    ids = data.get('ids', [])
+    ids    = data.get('ids', [])
     if action not in ('delete', 'activate', 'deactivate', 'set_category'):
         return err('Invalid action')
     if not ids or not isinstance(ids, list):
         return err('"ids" must be a non-empty list')
-    products = load_products()
-    affected = 0
-    if action == 'delete':
-        before = len(products)
-        products = [p for p in products if p['id'] not in ids]
-        affected = before - len(products)
-    elif action == 'set_category':
-        new_cat = str(data.get('category', '')).strip()
-        if not new_cat:
-            return err('"category" is required for set_category action')
-        for i, p in enumerate(products):
-            if p['id'] in ids:
-                products[i]['cat'] = new_cat
-                products[i]['updated_at'] = datetime.utcnow().isoformat()
-                affected += 1
-    else:
-        active_val = action == 'activate'
-        for i, p in enumerate(products):
-            if p['id'] in ids:
-                products[i]['active'] = active_val
-                products[i]['updated_at'] = datetime.utcnow().isoformat()
-                affected += 1
-    save_products(products)
-    return ok({'action': action, 'affected': affected})
+
+    placeholders = ','.join(['%s'] * len(ids))
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            if action == 'delete':
+                cur.execute(f'DELETE FROM products WHERE id IN ({placeholders})', ids)
+                affected = cur.rowcount
+
+            elif action == 'set_category':
+                new_cat = str(data.get('category', '')).strip()
+                if not new_cat:
+                    return err('"category" is required for set_category action')
+                cur.execute(
+                    f'UPDATE products SET cat = %s WHERE id IN ({placeholders})',
+                    [new_cat] + ids
+                )
+                affected = cur.rowcount
+
+            else:
+                active_val = 1 if action == 'activate' else 0
+                cur.execute(
+                    f'UPDATE products SET active = %s WHERE id IN ({placeholders})',
+                    [active_val] + ids
+                )
+                affected = cur.rowcount
+
+        return ok({'action': action, 'affected': affected})
+    finally:
+        conn.close()
+
+@app.route('/api/products/batch', methods=['POST'])
+def batch_create():
+    """Bulk-add endpoint used by the admin dashboard bulk-add modal."""
+    data = request.json or {}
+    products = data.get('products', [])
+    if not products:
+        return err('"products" list is required')
+
+    created, skipped, details = 0, 0, []
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            for p in products:
+                p, error = validate_product(dict(p), require_all=True)
+                if error:
+                    skipped += 1
+                    details.append({'name': p.get('name','?'), 'reason': error})
+                    continue
+                cur.execute('SELECT id FROM products WHERE LOWER(name) = LOWER(%s)', (p['name'],))
+                if cur.fetchone():
+                    skipped += 1
+                    details.append({'name': p['name'], 'reason': 'Duplicate name'})
+                    continue
+                new_id = str(uuid.uuid4())[:8]
+                cur.execute("""
+                    INSERT INTO products (id,name,cat,price,tag,description,img,active,stock)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    new_id, p['name'],
+                    str(p.get('cat','')).strip(),
+                    p.get('price', 0),
+                    str(p.get('tag','')).strip(),
+                    str(p.get('desc','')).strip(),
+                    p.get('img', ''),
+                    int(bool(p.get('active', True))),
+                    int(p.get('stock', 0)),
+                ))
+                created += 1
+
+        return ok({'created': created, 'skipped': skipped, 'details': details})
+    finally:
+        conn.close()
 
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
-    products = load_products()
-    cats = {}
-    for p in products:
-        cat = p.get('cat', 'Uncategorized')
-        cats[cat] = cats.get(cat, 0) + 1
-    return ok([{'name': k, 'count': v} for k, v in sorted(cats.items())])
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT cat AS name, COUNT(*) AS count FROM products GROUP BY cat ORDER BY cat')
+            return ok(list(cur.fetchall()))
+    finally:
+        conn.close()
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    products = load_products()
-    active  = [p for p in products if p.get('active', True)]
-    prices  = [p['price'] for p in products if 'price' in p]
-    stocks  = [p.get('stock', 0) for p in products]
-    return ok({
-        'total_products': len(products), 'active_products': len(active),
-        'inactive_products': len(products) - len(active),
-        'total_categories': len(set(p.get('cat') for p in products)),
-        'avg_price': round(sum(prices) / len(prices), 2) if prices else 0,
-        'min_price': min(prices) if prices else 0, 'max_price': max(prices) if prices else 0,
-        'total_stock': sum(stocks),
-        'low_stock_count': sum(1 for s in stocks if 0 < s <= 10),
-        'out_of_stock_count': sum(1 for s in stocks if s == 0),
-    })
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    COUNT(*)                                AS total_products,
+                    SUM(active = 1)                        AS active_products,
+                    SUM(active = 0)                        AS inactive_products,
+                    COUNT(DISTINCT cat)                    AS total_categories,
+                    ROUND(AVG(price), 2)                   AS avg_price,
+                    MIN(price)                             AS min_price,
+                    MAX(price)                             AS max_price,
+                    SUM(stock)                             AS total_stock,
+                    SUM(stock > 0 AND stock <= 10)         AS low_stock_count,
+                    SUM(stock = 0)                         AS out_of_stock_count
+                FROM products
+            """)
+            row = cur.fetchone()
+            # Convert Decimal / None to plain Python types
+            stats = {k: (float(v) if v is not None else 0) for k, v in row.items()}
+            for int_key in ('total_products','active_products','inactive_products',
+                            'total_categories','total_stock','low_stock_count','out_of_stock_count'):
+                stats[int_key] = int(stats[int_key])
+        return ok(stats)
+    finally:
+        conn.close()
 
-# ── Health check (Render uses this) ─────────────────────────────
+# ── Health check ─────────────────────────────────────────────────
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'data_file': DATA_FILE, 'exists': os.path.exists(DATA_FILE)})
+    try:
+        conn = get_db()
+        conn.ping()
+        conn.close()
+        db_ok = True
+    except Exception as e:
+        db_ok = False
+    return jsonify({'status': 'ok' if db_ok else 'degraded', 'db': 'connected' if db_ok else 'unreachable'})
 
-# ── Error handlers ───────────────────────────────────────────────
+# ── Error handlers ────────────────────────────────────────────────
 
 @app.errorhandler(404)
-def not_found(e): return err('Endpoint not found', 404)
+def not_found(e):    return err('Endpoint not found', 404)
 
 @app.errorhandler(405)
 def method_not_allowed(e): return err('Method not allowed', 405)
@@ -309,11 +510,13 @@ def method_not_allowed(e): return err('Method not allowed', 405)
 @app.errorhandler(500)
 def server_error(e): return err('Internal server error', 500)
 
-# ── Entry point ──────────────────────────────────────────────────
+# ── Entry point ───────────────────────────────────────────────────
 
 if __name__ == '__main__':
+    init_db()   # create table + seed if empty
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
-    print(f"  Data file : {DATA_FILE}")
-    print(f"  Port      : {port}")
+    print(f"  DB Host : {DB_CONFIG['host']}:{DB_CONFIG['port']}")
+    print(f"  DB Name : {DB_CONFIG['db']}")
+    print(f"  Port    : {port}")
     app.run(host='0.0.0.0', port=port, debug=debug)
