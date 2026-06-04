@@ -511,7 +511,7 @@ def method_not_allowed(e): return err('Method not allowed', 405)
 def server_error(e): return err('Internal server error', 500)
 
 # ── Entry point ───────────────────────────────────────────────────
-
+init_db()
 if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
