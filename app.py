@@ -513,7 +513,6 @@ def server_error(e): return err('Internal server error', 500)
 # ── Entry point ───────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    init_db()   # create table + seed if empty
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
     print(f"  DB Host : {DB_CONFIG['host']}:{DB_CONFIG['port']}")
