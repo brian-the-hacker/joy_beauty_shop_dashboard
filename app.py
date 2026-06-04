@@ -8,7 +8,7 @@ import pymysql
 import pymysql.cursors
 from dotenv import load_dotenv
 load_dotenv()
-
+print("DB_HOST =", os.environ.get('DB_HOST', 'NOT SET'))
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
@@ -19,25 +19,6 @@ cloudinary.config(
     api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
     secure=True
 )
-
-# ── MySQL Configuration ──────────────────────────────────────────
-#
-#  .env for Render (use PlanetScale / Railway free MySQL):
-#    DB_HOST=your-render-mysql-host
-#    DB_PORT=3306
-#    DB_USER=your_user
-#    DB_PASSWORD=your_password
-#    DB_NAME=joi_products
-#
-#  .env for HostPinnacle (cPanel MySQL):
-#    DB_HOST=localhost
-#    DB_PORT=3306
-#    DB_USER=cpanel_user
-#    DB_PASSWORD=cpanel_password
-#    DB_NAME=cpanel_dbname
-#
-#  Only the .env values change between environments.
-#  All code stays exactly the same.
 
 DB_CONFIG = {
     'host':     os.environ.get('DB_HOST', 'localhost'),
@@ -66,8 +47,8 @@ def init_db():
                     cat         VARCHAR(80)   NOT NULL,
                     price       DECIMAL(10,2) NOT NULL DEFAULT 0,
                     tag         VARCHAR(60)   DEFAULT '',
-                    description TEXT          DEFAULT '',
-                    img         TEXT          DEFAULT '',
+                    description TEXT,
+                    img         TEXT,
                     active      TINYINT(1)    NOT NULL DEFAULT 1,
                     stock       INT           NOT NULL DEFAULT 0,
                     created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -103,7 +84,7 @@ def row_to_dict(row):
         'cat':        row['cat'],
         'price':      float(row['price']),
         'tag':        row['tag'] or '',
-        'desc':       row['description'] or '',   # keep key as 'desc' for frontend compatibility
+        'desc':       row['description'] or '',
         'img':        row['img'] or '',
         'active':     bool(row['active']),
         'stock':      row['stock'],
@@ -210,16 +191,13 @@ def get_products():
 
             where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
 
-            # Count total
             cur.execute(f'SELECT COUNT(*) AS cnt FROM products {where}', params)
             total = cur.fetchone()['cnt']
 
-            # Sort
             sort_map = {'price':'price','name':'name','created_at':'created_at','stock':'stock'}
             sf  = sort_map.get(request.args.get('sort', 'created_at'), 'created_at')
             so  = 'DESC' if request.args.get('order', 'asc').lower() == 'desc' else 'ASC'
 
-            # Pagination
             try:
                 page  = max(1, int(request.args.get('page', 1)))
                 limit = min(100, max(1, int(request.args.get('limit', total or 1))))
@@ -315,8 +293,6 @@ def update_product(product_id):
             if cur.fetchone():
                 return err(f'Another product named "{new_name}" already exists', 409)
 
-            # Build dynamic SET clause from whatever was sent
-            allowed = {'name','cat','price','tag','desc','img','active','stock'}
             sets, vals = [], []
             for key, col in [('name','name'),('cat','cat'),('price','price'),('tag','tag'),
                               ('desc','description'),('img','img'),('active','active'),('stock','stock')]:
@@ -381,7 +357,6 @@ def bulk_action():
             if action == 'delete':
                 cur.execute(f'DELETE FROM products WHERE id IN ({placeholders})', ids)
                 affected = cur.rowcount
-
             elif action == 'set_category':
                 new_cat = str(data.get('category', '')).strip()
                 if not new_cat:
@@ -391,7 +366,6 @@ def bulk_action():
                     [new_cat] + ids
                 )
                 affected = cur.rowcount
-
             else:
                 active_val = 1 if action == 'activate' else 0
                 cur.execute(
@@ -399,14 +373,12 @@ def bulk_action():
                     [active_val] + ids
                 )
                 affected = cur.rowcount
-
         return ok({'action': action, 'affected': affected})
     finally:
         conn.close()
 
 @app.route('/api/products/batch', methods=['POST'])
 def batch_create():
-    """Bulk-add endpoint used by the admin dashboard bulk-add modal."""
     data = request.json or {}
     products = data.get('products', [])
     if not products:
@@ -442,7 +414,6 @@ def batch_create():
                     int(p.get('stock', 0)),
                 ))
                 created += 1
-
         return ok({'created': created, 'skipped': skipped, 'details': details})
     finally:
         conn.close()
@@ -477,7 +448,6 @@ def get_stats():
                 FROM products
             """)
             row = cur.fetchone()
-            # Convert Decimal / None to plain Python types
             stats = {k: (float(v) if v is not None else 0) for k, v in row.items()}
             for int_key in ('total_products','active_products','inactive_products',
                             'total_categories','total_stock','low_stock_count','out_of_stock_count'):
@@ -512,6 +482,7 @@ def server_error(e): return err('Internal server error', 500)
 
 # ── Entry point ───────────────────────────────────────────────────
 init_db()
+
 if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
