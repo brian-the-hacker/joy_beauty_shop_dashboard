@@ -4,3 +4,4 @@ gunicorn>=21.2.0
 cloudinary==1.44.2
 python-dotenv>=1.0.0
 pymysql
+dbutils

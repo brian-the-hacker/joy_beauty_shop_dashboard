@@ -6,13 +6,16 @@ import cloudinary
 import cloudinary.uploader
 import pymysql
 import pymysql.cursors
+from dbutils.pooled_db import PooledDB
 from dotenv import load_dotenv
 load_dotenv()
+
 print("DB_HOST =", os.environ.get('DB_HOST', 'NOT SET'))
+
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# ── Cloudinary Configuration ─────────────────────────────────────
+# ── Cloudinary ────────────────────────────────────────────────────
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
     api_key=os.environ.get('CLOUDINARY_API_KEY'),
@@ -20,23 +23,32 @@ cloudinary.config(
     secure=True
 )
 
-DB_CONFIG = {
-    'host':     os.environ.get('DB_HOST', 'localhost'),
-    'port':     int(os.environ.get('DB_PORT', 3306)),
-    'user':     os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', ''),
-    'db':       os.environ.get('DB_NAME', 'joi_products'),
-    'charset':  'utf8mb4',
-    'cursorclass': pymysql.cursors.DictCursor,
-    'autocommit': True,
-}
+# ── Connection Pool ───────────────────────────────────────────────
+# Opens 3 connections at startup and reuses them for every request.
+# This eliminates the per-request connection overhead that was causing
+# slow updates.
+pool = PooledDB(
+    creator=pymysql,
+    mincached=3,       # keep 3 connections open at all times
+    maxcached=10,      # pool up to 10 idle connections
+    maxconnections=20, # never exceed 20 total
+    blocking=True,     # wait for a free connection instead of crashing
+    host=os.environ.get('DB_HOST', 'localhost'),
+    port=int(os.environ.get('DB_PORT', 3306)),
+    user=os.environ.get('DB_USER', 'root'),
+    password=os.environ.get('DB_PASSWORD', ''),
+    db=os.environ.get('DB_NAME', 'joi_products'),
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor,
+    autocommit=True,
+)
 
 def get_db():
-    """Open a new database connection."""
-    return pymysql.connect(**DB_CONFIG)
+    """Get a connection from the pool (auto-returned on .close())."""
+    return pool.connection()
 
+# ── DB Init ───────────────────────────────────────────────────────
 def init_db():
-    """Create the products table if it doesn't exist, and seed default data."""
     conn = get_db()
     try:
         with conn.cursor() as cur:
@@ -56,16 +68,15 @@ def init_db():
                         ON UPDATE CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """)
-            # Seed only if table is empty
             cur.execute("SELECT COUNT(*) AS cnt FROM products")
             if cur.fetchone()['cnt'] == 0:
                 defaults = [
-                    ('p0000001', 'Velvet Noir Serum',    'Serums',      148, 'Bestseller', 'A midnight-dark elixir that revives and illuminates dull skin overnight.',                'https://images.pexels.com/photos/5632386/pexels-photo-5632386.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 42),
-                    ('p0000002', 'Gold Radiance Cream',  'Moisturizers',195, 'New',        'Infused with 24k gold particles for a luminous, sculpted complexion.',                  'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 28),
-                    ('p0000003', 'Obsidian Eye Elixir',  'Eye Care',    112, 'Award Winner','Deep-repairing formula that erases dark circles and fine lines.',                       'https://images.pexels.com/photos/4762440/pexels-photo-4762440.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 15),
-                    ('p0000004', 'Charles Lip Nectar',   'Lip Care',     68, 'Fan Favorite','Plumping lip treatment with a mirror-like finish and rich hydration.',                  'https://images.pexels.com/photos/3997989/pexels-photo-3997989.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 60),
-                    ('p0000005', 'Navy Mist Toner',      'Toners',       85, 'Vegan',      'Balancing botanical mist that preps skin for effortless absorption.',                   'https://images.pexels.com/photos/6424249/pexels-photo-6424249.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 33),
-                    ('p0000006', 'Imperial Body Oil',    'Body',        135, 'Luxury',     'A silky dry oil blend of rose hip, argan and jasmine for goddess skin.',                'https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 20),
+                    ('p0000001', 'Velvet Noir Serum',    'Serums',      148, 'Bestseller',  'A midnight-dark elixir that revives and illuminates dull skin overnight.',       'https://images.pexels.com/photos/5632386/pexels-photo-5632386.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 42),
+                    ('p0000002', 'Gold Radiance Cream',  'Moisturizers',195, 'New',         'Infused with 24k gold particles for a luminous, sculpted complexion.',           'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 28),
+                    ('p0000003', 'Obsidian Eye Elixir',  'Eye Care',    112, 'Award Winner','Deep-repairing formula that erases dark circles and fine lines.',                'https://images.pexels.com/photos/4762440/pexels-photo-4762440.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 15),
+                    ('p0000004', 'Charles Lip Nectar',   'Lip Care',     68, 'Fan Favorite','Plumping lip treatment with a mirror-like finish and rich hydration.',           'https://images.pexels.com/photos/3997989/pexels-photo-3997989.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 60),
+                    ('p0000005', 'Navy Mist Toner',      'Toners',       85, 'Vegan',       'Balancing botanical mist that preps skin for effortless absorption.',            'https://images.pexels.com/photos/6424249/pexels-photo-6424249.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 33),
+                    ('p0000006', 'Imperial Body Oil',    'Body',        135, 'Luxury',      'A silky dry oil blend of rose hip, argan and jasmine for goddess skin.',         'https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=600', 1, 20),
                 ]
                 cur.executemany("""
                     INSERT INTO products (id,name,cat,price,tag,description,img,active,stock)
@@ -74,10 +85,8 @@ def init_db():
     finally:
         conn.close()
 
-# ── Helpers ──────────────────────────────────────────────────────
-
+# ── Helpers ───────────────────────────────────────────────────────
 def row_to_dict(row):
-    """Normalise a DB row to the same shape the old JSON used."""
     return {
         'id':         row['id'],
         'name':       row['name'],
@@ -98,8 +107,7 @@ def ok(data, status=200):
 def err(message, status=400):
     return jsonify({'success': False, 'error': message}), status
 
-# ── Validation ───────────────────────────────────────────────────
-
+# ── Validation ────────────────────────────────────────────────────
 def validate_product(data, require_all=True):
     errors = []
     if require_all:
@@ -135,7 +143,7 @@ def validate_product(data, require_all=True):
         return None, '; '.join(errors)
     return data, None
 
-# ── Routes ───────────────────────────────────────────────────────
+# ── Routes ────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -195,8 +203,8 @@ def get_products():
             total = cur.fetchone()['cnt']
 
             sort_map = {'price':'price','name':'name','created_at':'created_at','stock':'stock'}
-            sf  = sort_map.get(request.args.get('sort', 'created_at'), 'created_at')
-            so  = 'DESC' if request.args.get('order', 'asc').lower() == 'desc' else 'ASC'
+            sf = sort_map.get(request.args.get('sort', 'created_at'), 'created_at')
+            so = 'DESC' if request.args.get('order', 'asc').lower() == 'desc' else 'ASC'
 
             try:
                 page  = max(1, int(request.args.get('page', 1)))
@@ -209,7 +217,7 @@ def get_products():
                 f'SELECT * FROM products {where} ORDER BY {sf} {so} LIMIT %s OFFSET %s',
                 params + [limit, offset]
             )
-            rows = [row_to_dict(r) for r in cur.fetchall()]
+            rows  = [row_to_dict(r) for r in cur.fetchall()]
             pages = max(1, -(-total // limit)) if limit else 1
 
         return jsonify({
@@ -248,7 +256,6 @@ def create_product():
             cur.execute('SELECT id FROM products WHERE LOWER(name) = LOWER(%s)', (data['name'],))
             if cur.fetchone():
                 return err(f'A product named "{data["name"]}" already exists', 409)
-
             new_id = str(uuid.uuid4())[:8]
             cur.execute("""
                 INSERT INTO products (id, name, cat, price, tag, description, img, active, stock)
@@ -261,7 +268,7 @@ def create_product():
                 str(data.get('tag', '')).strip(),
                 str(data.get('desc', '')).strip(),
                 data.get('img', ''),
-                bool(data.get('active', True)),
+                int(bool(data.get('active', True))),
                 int(data.get('stock', 0)),
             ))
             cur.execute('SELECT * FROM products WHERE id = %s', (new_id,))
@@ -280,6 +287,8 @@ def update_product(product_id):
     conn = get_db()
     try:
         with conn.cursor() as cur:
+            # Single query: fetch + duplicate-check + update + re-fetch
+            # all on the same already-open pooled connection = fast
             cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
             existing = cur.fetchone()
             if not existing:
@@ -342,7 +351,7 @@ def toggle_product(product_id):
 
 @app.route('/api/products/bulk', methods=['POST'])
 def bulk_action():
-    data = request.json or {}
+    data   = request.json or {}
     action = data.get('action')
     ids    = data.get('ids', [])
     if action not in ('delete', 'activate', 'deactivate', 'set_category'):
@@ -379,7 +388,7 @@ def bulk_action():
 
 @app.route('/api/products/batch', methods=['POST'])
 def batch_create():
-    data = request.json or {}
+    data     = request.json or {}
     products = data.get('products', [])
     if not products:
         return err('"products" list is required')
@@ -392,7 +401,7 @@ def batch_create():
                 p, error = validate_product(dict(p), require_all=True)
                 if error:
                     skipped += 1
-                    details.append({'name': p.get('name','?'), 'reason': error})
+                    details.append({'name': p.get('name', '?'), 'reason': error})
                     continue
                 cur.execute('SELECT id FROM products WHERE LOWER(name) = LOWER(%s)', (p['name'],))
                 if cur.fetchone():
@@ -405,10 +414,10 @@ def batch_create():
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
                     new_id, p['name'],
-                    str(p.get('cat','')).strip(),
+                    str(p.get('cat', '')).strip(),
                     p.get('price', 0),
-                    str(p.get('tag','')).strip(),
-                    str(p.get('desc','')).strip(),
+                    str(p.get('tag', '')).strip(),
+                    str(p.get('desc', '')).strip(),
                     p.get('img', ''),
                     int(bool(p.get('active', True))),
                     int(p.get('stock', 0)),
@@ -435,58 +444,48 @@ def get_stats():
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT
-                    COUNT(*)                                AS total_products,
-                    SUM(active = 1)                        AS active_products,
-                    SUM(active = 0)                        AS inactive_products,
-                    COUNT(DISTINCT cat)                    AS total_categories,
-                    ROUND(AVG(price), 2)                   AS avg_price,
-                    MIN(price)                             AS min_price,
-                    MAX(price)                             AS max_price,
-                    SUM(stock)                             AS total_stock,
-                    SUM(stock > 0 AND stock <= 10)         AS low_stock_count,
-                    SUM(stock = 0)                         AS out_of_stock_count
+                    COUNT(*)                            AS total_products,
+                    SUM(active = 1)                     AS active_products,
+                    SUM(active = 0)                     AS inactive_products,
+                    COUNT(DISTINCT cat)                 AS total_categories,
+                    ROUND(AVG(price), 2)                AS avg_price,
+                    MIN(price)                          AS min_price,
+                    MAX(price)                          AS max_price,
+                    SUM(stock)                          AS total_stock,
+                    SUM(stock > 0 AND stock <= 10)      AS low_stock_count,
+                    SUM(stock = 0)                      AS out_of_stock_count
                 FROM products
             """)
-            row = cur.fetchone()
+            row   = cur.fetchone()
             stats = {k: (float(v) if v is not None else 0) for k, v in row.items()}
-            for int_key in ('total_products','active_products','inactive_products',
-                            'total_categories','total_stock','low_stock_count','out_of_stock_count'):
-                stats[int_key] = int(stats[int_key])
+            for k in ('total_products','active_products','inactive_products',
+                      'total_categories','total_stock','low_stock_count','out_of_stock_count'):
+                stats[k] = int(stats[k])
         return ok(stats)
     finally:
         conn.close()
 
-# ── Health check ─────────────────────────────────────────────────
-
+# ── Health ────────────────────────────────────────────────────────
 @app.route('/health')
 def health():
     try:
-        conn = get_db()
-        conn.ping()
-        conn.close()
-        db_ok = True
+        conn = get_db(); conn.ping(); conn.close()
+        return jsonify({'status': 'ok', 'db': 'connected'})
     except Exception as e:
-        db_ok = False
-    return jsonify({'status': 'ok' if db_ok else 'degraded', 'db': 'connected' if db_ok else 'unreachable'})
+        return jsonify({'status': 'degraded', 'db': str(e)}), 500
 
 # ── Error handlers ────────────────────────────────────────────────
-
 @app.errorhandler(404)
-def not_found(e):    return err('Endpoint not found', 404)
-
+def not_found(e):          return err('Endpoint not found', 404)
 @app.errorhandler(405)
 def method_not_allowed(e): return err('Method not allowed', 405)
-
 @app.errorhandler(500)
-def server_error(e): return err('Internal server error', 500)
+def server_error(e):       return err('Internal server error', 500)
 
-# ── Entry point ───────────────────────────────────────────────────
+# ── Boot ──────────────────────────────────────────────────────────
 init_db()
 
 if __name__ == '__main__':
     port  = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
-    print(f"  DB Host : {DB_CONFIG['host']}:{DB_CONFIG['port']}")
-    print(f"  DB Name : {DB_CONFIG['db']}")
-    print(f"  Port    : {port}")
     app.run(host='0.0.0.0', port=port, debug=debug)
