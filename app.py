@@ -519,6 +519,12 @@ def method_not_allowed(e): return err('Method not allowed', 405)
 @app.errorhandler(500)
 def server_error(e):       return err('Internal server error', 500)
 
+@app.route('/api/upload/status', methods=['GET'])
+def upload_status():
+    missing = [k for k in ('CLOUDINARY_CLOUD_NAME','CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET')
+               if not os.environ.get(k)]
+    return ok({'configured': len(missing) == 0, 'missing': missing})
+
 # ── Boot ──────────────────────────────────────────────────────────
 init_db()
 
