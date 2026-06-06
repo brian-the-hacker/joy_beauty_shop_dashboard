@@ -24,15 +24,12 @@ cloudinary.config(
 )
 
 # ── Connection Pool ───────────────────────────────────────────────
-# Opens 3 connections at startup and reuses them for every request.
-# This eliminates the per-request connection overhead that was causing
-# slow updates.
 pool = PooledDB(
     creator=pymysql,
-    mincached=3,       # keep 3 connections open at all times
-    maxcached=10,      # pool up to 10 idle connections
-    maxconnections=20, # never exceed 20 total
-    blocking=True,     # wait for a free connection instead of crashing
+    mincached=3,
+    maxcached=10,
+    maxconnections=20,
+    blocking=True,
     host=os.environ.get('DB_HOST', 'localhost'),
     port=int(os.environ.get('DB_PORT', 3306)),
     user=os.environ.get('DB_USER', 'root'),
@@ -44,7 +41,6 @@ pool = PooledDB(
 )
 
 def get_db():
-    """Get a connection from the pool (auto-returned on .close())."""
     return pool.connection()
 
 # ── DB Init ───────────────────────────────────────────────────────
@@ -107,6 +103,8 @@ def ok(data, status=200):
 def err(message, status=400):
     return jsonify({'success': False, 'error': message}), status
 
+
+
 # ── Validation ────────────────────────────────────────────────────
 def validate_product(data, require_all=True):
     errors = []
@@ -149,6 +147,7 @@ def validate_product(data, require_all=True):
 def index():
     return send_from_directory('static', 'index.html')
 
+# ── Upload ────────────────────────────────────────────────────────
 @app.route('/api/upload', methods=['POST'])
 def upload_image():
     if 'file' not in request.files:
@@ -156,15 +155,34 @@ def upload_image():
     file = request.files['file']
     if not file.filename:
         return err('Empty filename')
+
+    allowed_mimes = {'image/jpeg', 'image/png', 'image/webp', 'image/heic',
+                     'image/heif', 'image/gif', 'image/avif'}
+    mime = file.content_type or ''
+    if mime and mime not in allowed_mimes:
+        return err(f'Unsupported file type: {mime}. Please upload a JPEG, PNG, or WebP image.')
+
     try:
         result = cloudinary.uploader.upload(
             file,
             folder='joi-products',
-            transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto', 'fetch_format': 'auto'}]
+            resource_type='image',
+            overwrite=False,
         )
-        return ok({'url': result['secure_url'], 'public_id': result['public_id']})
+        return ok({
+            'url':       result['secure_url'],
+            'public_id': result['public_id'],
+            'width':     result.get('width'),
+            'height':    result.get('height'),
+            'format':    result.get('format'),
+            'bytes':     result.get('bytes', 0),
+        })
+    except cloudinary.exceptions.Error as e:
+        return err(f'Cloudinary error: {str(e)}')
     except Exception as e:
         return err(f'Upload failed: {str(e)}')
+
+# ── Products ──────────────────────────────────────────────────────
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
@@ -287,8 +305,6 @@ def update_product(product_id):
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            # Single query: fetch + duplicate-check + update + re-fetch
-            # all on the same already-open pooled connection = fast
             cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
             existing = cur.fetchone()
             if not existing:
