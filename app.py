@@ -81,8 +81,26 @@ def init_db():
     finally:
         conn.close()
 
+# ── Image Optimization ────────────────────────────────────────────
+def optimize_img(url: str, width: int = 600) -> str:
+    if not url:
+        return url
+    if 'cloudinary.com' in url:
+        return url.replace('/upload/', f'/upload/f_auto,q_auto,w_{width},c_fill,g_auto/')
+    if 'pexels.com' in url:
+        from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        params['w'] = [str(width)]
+        params['auto'] = ['compress']
+        params['cs'] = ['tinysrgb']
+        new_query = urlencode({k: v[0] for k, v in params.items()})
+        return urlunparse(parsed._replace(query=new_query))
+    return url
+
 # ── Helpers ───────────────────────────────────────────────────────
 def row_to_dict(row):
+    raw = row['img'] or ''
     return {
         'id':         row['id'],
         'name':       row['name'],
@@ -90,7 +108,10 @@ def row_to_dict(row):
         'price':      float(row['price']),
         'tag':        row['tag'] or '',
         'desc':       row['description'] or '',
-        'img':        row['img'] or '',
+        'img':        optimize_img(raw, 600),   # desktop card
+        'img_sm':     optimize_img(raw, 300),   # mobile card
+        'img_lqip':   optimize_img(raw, 40),    # blur placeholder
+        'img_zoom':   optimize_img(raw, 1200),  # lightbox
         'active':     bool(row['active']),
         'stock':      row['stock'],
         'created_at': row['created_at'].isoformat() if hasattr(row['created_at'], 'isoformat') else str(row['created_at']),
