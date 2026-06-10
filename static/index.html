@@ -551,13 +551,7 @@ let cloudinaryOk=true;  // assume OK until checked
    HELPERS
 ═══════════════════════════════════════ */
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-
-// FIXED: Safe API URL function with fallback
-function api(){ 
-  const el = document.getElementById('apiUrl');
-  if(!el || !el.value) return window.location.origin;
-  return el.value.replace(/\/+$/, '');
-}
+function api(){ return document.getElementById('apiUrl').value.replace(/\/$/,''); }
 
 function initApiBar(){
   const loc=window.location;
@@ -571,19 +565,14 @@ function initApiBar(){
 function setConn(s){ document.getElementById('connDot').className='conn-dot '+(s==='ok'?'ok':s==='err'?'err':''); }
 
 /* ═══════════════════════════════════════
-   CLOUDINARY STATUS CHECK - FIXED
+   CLOUDINARY STATUS CHECK
 ═══════════════════════════════════════ */
 async function checkCloudinary(){
   try{
     const r=await fetch(api()+'/api/upload/status');
     if(!r.ok) return;
-    
-    let json;
-    try { json = await r.json(); } catch { json = {}; }
-    
-    const data = json.data || {};
-    cloudinaryOk = !!data.configured;
-    
+    const {data}=await r.json();
+    cloudinaryOk=data.configured;
     const banner=document.getElementById('cdnBanner');
     if(!cloudinaryOk){
       const missing=(data.missing||[]).join(', ');
@@ -593,10 +582,7 @@ async function checkCloudinary(){
     } else {
       banner.classList.remove('show');
     }
-  }catch(e){
-    console.error('Cloudinary check failed:', e);
-    cloudinaryOk = false;
-  }
+  }catch(e){}
 }
 
 /* ═══════════════════════════════════════
@@ -611,9 +597,7 @@ async function loadStats(){
   try{
     const r=await fetch(api()+'/api/stats');
     if(!r.ok) return;
-    let json;
-    try { json = await r.json(); } catch { return; }
-    const {data:d}=json;
+    const {data:d}=await r.json();
     document.getElementById('s-total').textContent=d.total_products;
     document.getElementById('s-active').textContent=d.active_products;
     document.getElementById('s-cats').textContent=d.total_categories;
@@ -626,9 +610,7 @@ async function loadCats(){
   try{
     const r=await fetch(api()+'/api/categories');
     if(!r.ok) return;
-    let json;
-    try { json = await r.json(); } catch { return; }
-    const {data}=json;
+    const {data}=await r.json();
     cats=data;
     const sel=document.getElementById('filterCat');
     sel.innerHTML='<option value="">All Categories</option>'+data.map(c=>`<option value="${esc(c.name)}">${esc(c.name)} (${c.count})</option>`).join('');
@@ -681,12 +663,8 @@ function applyFilters(){ page=1; loadProducts(); }
 function onSearch(){ clearTimeout(searchTimer); searchTimer=setTimeout(applyFilters,350); }
 
 /* ═══════════════════════════════════════
-   TABLE - FIXED IMAGE ERROR HANDLING
+   TABLE
 ═══════════════════════════════════════ */
-function handleImgError(el){
-  el.outerHTML = '<div class="prod-img-ph">📦</div>';
-}
-
 function renderTable(products){
   if(!products.length){
     document.getElementById('tableContent').innerHTML='<div class="loading">No products found.</div>';
@@ -695,7 +673,7 @@ function renderTable(products){
   const rows=products.map(p=>{
     const sc=p.stock===0?'color:#ff6b6b':p.stock<=10?'color:#ffaa44':'color:rgba(255,255,255,0.6)';
     const imgCell=p.img
-      ?`<img class="prod-img" src="${esc(p.img)}" alt="${esc(p.name)}" onerror="handleImgError(this)" />`
+      ?`<img class="prod-img" src="${esc(p.img)}" alt="${esc(p.name)}" onerror="this.outerHTML='<div class=\\'prod-img-ph\\'>📦</div>'" />`
       :`<div class="prod-img-ph">📦</div>`;
     return `<tr class="${selIds.has(p.id)?'selected':''}" id="row-${esc(p.id)}">
       <td><input type="checkbox" ${selIds.has(p.id)?'checked':''} onchange="toggleSel('${esc(p.id)}',this.checked)" /></td>
@@ -711,7 +689,7 @@ function renderTable(products){
     </tr>`;
   }).join('');
   document.getElementById('tableContent').innerHTML=`
-    </table>
+    <table>
       <thead><tr>
         <th><input type="checkbox" id="cbAll" onchange="toggleAll(this.checked)" /></th>
         <th>Image</th><th>Product</th><th>Tag</th><th>Stock</th><th>Active</th><th>Actions</th>
@@ -990,7 +968,7 @@ async function saveProduct(){
 }
 
 /* ═══════════════════════════════════════
-   IMAGE — SINGLE MODAL - FIXED UPLOAD
+   IMAGE — SINGLE MODAL
 ═══════════════════════════════════════ */
 function switchTab(tab){
   document.getElementById('tabUpload').classList.toggle('active',tab==='upload');
@@ -1019,72 +997,28 @@ function clearImage(resetUrl=true){
   document.getElementById('uploadBar').style.width='0%';
 }
 
-// FIXED: Robust upload with timeout and proper error handling
 async function uploadFile(file, onProgress, onDone, onFail){
   if(!cloudinaryOk){
-    onFail('Uploads are disabled (Cloudinary not configured)');
+    onFail('Image uploads are not configured on this server. Add CLOUDINARY_* env vars and restart.');
     return;
   }
-
-  if(!file){
-    onFail('No file selected');
-    return;
-  }
-
-  if(file.size > 10 * 1024 * 1024){
-    onFail('File too large (max 10MB)');
-    return;
-  }
-
-  if(!file.type.startsWith('image/')){
-    onFail('Only image files allowed');
-    return;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-
+  if(file.size>10*1024*1024){onFail('File too large (max 10MB)');return;}
+  if(!file.type.startsWith('image/')){onFail('Only image files allowed');return;}
+  onProgress(30);
+  const fd=new FormData(); fd.append('file',file);
   try{
-    onProgress(20);
-
-    const fd = new FormData();
-    fd.append('file', file);
-
-    const r = await fetch(api() + '/api/upload', {
-      method: 'POST',
-      body: fd,
-      signal: controller.signal
-    });
-
-    onProgress(70);
-
-    let json;
-    try{
-      json = await r.json();
-    }catch(e){
-      throw new Error('Invalid server response');
-    }
-
+    const r=await fetch(api()+'/api/upload',{method:'POST',body:fd});
+    onProgress(85);
     if(!r.ok){
-      throw new Error(json.error || `HTTP ${r.status}`);
+      let msg='HTTP '+r.status;
+      try{const j=await r.json(); msg=j.error||msg;}catch(e){}
+      throw new Error(msg);
     }
-
-    if(!json.success || !json.data?.url){
-      throw new Error(json.error || 'Upload failed (no URL returned)');
-    }
-
+    const json=await r.json();
+    if(!json.success) throw new Error(json.error||'Upload failed');
     onProgress(100);
     onDone(json.data.url);
-
-  }catch(e){
-    if(e.name === 'AbortError'){
-      onFail('Upload timed out. Try again.');
-    } else {
-      onFail(e.message);
-    }
-  }finally{
-    clearTimeout(timeout);
-  }
+  }catch(e){ onFail(e.message); }
 }
 
 async function handleFileSelect(e){ const f=e.target.files[0]; if(f) await doUploadSingle(f); }
