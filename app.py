@@ -185,7 +185,7 @@ def upload_image():
 
     try:
         result = cloudinary.uploader.upload(
-            file.stream,   # ← was just `file`
+            file,   # ← was just `file`
             folder='joi-products',
             resource_type='image',
             overwrite=False,
